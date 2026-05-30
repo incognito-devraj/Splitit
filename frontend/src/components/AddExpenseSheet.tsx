@@ -15,6 +15,7 @@ export function AddExpenseSheet() {
   const { open, closeSheet, presetCategory } = useSheet();
   const { user } = useAuth();
   const qc = useQueryClient();
+  const activeGroupId = user?.groupId ?? null;
 
   const [step, setStep] = useState<Step>(0);
   const [category, setCategory] = useState<Category | null>(null);
@@ -26,16 +27,16 @@ export function AddExpenseSheet() {
 
   // Load real group members
   const { data: members = [] } = useQuery({
-    queryKey: QK.members,
+    queryKey: QK.members(activeGroupId),
     queryFn: () => groupApi.members().then((r) => r.data.data),
-    enabled: !!user?.groupId,
+    enabled: !!activeGroupId,
   });
 
   // Load previously used guests for autocomplete
   const { data: knownGuests = [] } = useQuery({
     queryKey: ["expense-guests"],
     queryFn: () => expenseApi.guests().then((r) => r.data.data),
-    enabled: !!user?.groupId,
+    enabled: !!activeGroupId,
   });
 
   useEffect(() => {
@@ -59,10 +60,10 @@ export function AddExpenseSheet() {
       title?: string;
     }) => expenseApi.create(body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: QK.expenses });
-      qc.invalidateQueries({ queryKey: QK.balances });
-      qc.invalidateQueries({ queryKey: QK.summary });
-      qc.invalidateQueries({ queryKey: QK.summaryCategory });
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      qc.invalidateQueries({ queryKey: ["balances"] });
+      qc.invalidateQueries({ queryKey: ["summary"] });
+      qc.invalidateQueries({ queryKey: ["summary-category"] });
       qc.invalidateQueries({ queryKey: ["expense-guests"] });
     },
   });

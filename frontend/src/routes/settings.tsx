@@ -17,16 +17,17 @@ function Settings() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [copied, setCopied] = useState(false);
+  const activeGroupId = user?.groupId ?? null;
 
   const { data: group } = useQuery({
-    queryKey: QK.group,
+    queryKey: QK.group(activeGroupId),
     queryFn: () => groupApi.current().then((r) => r.data.data),
-    enabled: !!user?.groupId,
+    enabled: !!activeGroupId,
   });
 
   const regenMutation = useMutation({
     mutationFn: () => groupApi.regenerateCode(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: QK.group }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["group"] }),
   });
 
   const copyCode = () => {

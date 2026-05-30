@@ -9,23 +9,20 @@ import swaggerUi from 'swagger-ui-express';
 
 import { env } from './config/env';
 import { swaggerSpec } from './config/swagger';
-import { apiLimiter } from './middleware/rateLimit.middleware';
 import { errorMiddleware } from './middleware/error.middleware';
 import { logger } from './utils/logger';
 
-import authRoutes       from './routes/auth.routes';
-import groupRoutes      from './routes/group.routes';
-import expenseRoutes    from './routes/expense.routes';
-import balanceRoutes    from './routes/balance.routes';
+import authRoutes from './routes/auth.routes';
+import groupRoutes from './routes/group.routes';
+import expenseRoutes from './routes/expense.routes';
+import balanceRoutes from './routes/balance.routes';
 import settlementRoutes from './routes/settlement.routes';
-import summaryRoutes    from './routes/summary.routes';
+import summaryRoutes from './routes/summary.routes';
 import joinRequestRoutes from './routes/joinRequest.routes';
 
 const app = express();
 
-// ─── Security ─────────────────────────────────────────────────────────────────
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-// Disable ETags so browsers never return 304 — always get fresh data
 app.set('etag', false);
 
 const allowedOrigins = [
@@ -38,7 +35,6 @@ const allowedOrigins = [
 
 const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (curl, Postman, server-to-server)
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -46,7 +42,7 @@ const corsOptions: CorsOptions = {
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type',
     'Authorization',
@@ -54,53 +50,42 @@ const corsOptions: CorsOptions = {
     'Pragma',
     'X-Requested-With',
   ],
-  optionsSuccessStatus: 204, // some browsers choke on 200 for OPTIONS
+  optionsSuccessStatus: 204,
 };
 
-// Handle preflight for every route before any other middleware
 app.options('*', cors(corsOptions));
 app.use(cors(corsOptions));
 
-// ─── Parsing ──────────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser());
 app.use(compression());
 app.use(mongoSanitize());
 
-// ─── Logging ──────────────────────────────────────────────────────────────────
 if (env.NODE_ENV !== 'test') {
   app.use(morgan('dev', { stream: { write: (msg) => logger.http(msg.trim()) } }));
 }
 
-// ─── Rate Limit ───────────────────────────────────────────────────────────────
-app.use('/api', apiLimiter);
-
-// ─── Health ───────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
   res.json({ success: true, data: { status: 'ok', env: env.NODE_ENV, ts: new Date().toISOString() } });
 });
 
-// ─── Docs ─────────────────────────────────────────────────────────────────────
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customSiteTitle: 'PG Splito API',
   customCss: '.swagger-ui .topbar { display: none }',
 }));
 app.get('/api/docs.json', (_req, res) => res.json(swaggerSpec));
 
-// ─── Routes ───────────────────────────────────────────────────────────────────
-app.use('/api/auth',          authRoutes);
-app.use('/api/groups',        groupRoutes);
-app.use('/api/expenses',      expenseRoutes);
-app.use('/api/balances',      balanceRoutes);
-app.use('/api/settlements',   settlementRoutes);
-app.use('/api/summary',       summaryRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/groups', groupRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/balances', balanceRoutes);
+app.use('/api/settlements', settlementRoutes);
+app.use('/api/summary', summaryRoutes);
 app.use('/api/join-requests', joinRequestRoutes);
 
-// ─── 404 ──────────────────────────────────────────────────────────────────────
 app.use((_req, res) => res.status(404).json({ success: false, message: 'Route not found' }));
 
-// ─── Error Handler ────────────────────────────────────────────────────────────
 app.use(errorMiddleware);
 
 export default app;

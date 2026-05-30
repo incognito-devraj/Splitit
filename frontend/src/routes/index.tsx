@@ -25,31 +25,32 @@ function formatDay(ts: string) {
 function Dashboard() {
   const { user } = useAuth();
   const openSheet = useSheet((s) => s.openSheet);
+  const activeGroupId = user?.groupId ?? null;
 
   const { data: groupData } = useQuery({
-    queryKey: QK.group,
+    queryKey: QK.group(activeGroupId),
     queryFn: () => groupApi.current().then((r) => r.data.data),
-    enabled: !!user?.groupId,
+    enabled: !!activeGroupId,
   });
 
   const { data: balances = [], isLoading: balLoading } = useQuery({
-    queryKey: QK.balances,
+    queryKey: QK.balances(activeGroupId),
     queryFn: () => balanceApi.all().then((r) => r.data.data),
-    enabled: !!user?.groupId,
+    enabled: !!activeGroupId,
     refetchInterval: 30_000,
   });
 
   const { data: expensesData, isLoading: expLoading } = useQuery({
-    queryKey: QK.expenses,
-    queryFn: () => expenseApi.list({ limit: 100 }).then((r) => r.data),
-    enabled: !!user?.groupId,
+    queryKey: QK.expenses(activeGroupId),
+    queryFn: () => expenseApi.list({ limit: 100 }).then((r) => r.data.data),
+    enabled: !!activeGroupId,
   });
 
   const myBalance = balances.find((b) => b.userId === user?._id);
   const netBalance = myBalance?.netBalance ?? 0;
-  const totalReceivable = balances.filter((b) => b.netBalance > 0).reduce((s, b) => s + b.netBalance, 0);
-  const totalOwed = balances.filter((b) => b.netBalance < 0).reduce((s, b) => s + Math.abs(b.netBalance), 0);
-  const recentExpenses = (expensesData?.data ?? []).slice(0, 5);
+  const personalReceivable = Math.max(netBalance, 0);
+  const personalOwed = Math.max(-netBalance, 0);
+  const recentExpenses = Array.isArray(expensesData) ? expensesData.slice(0, 5) : [];
   const memberCount = groupData?.members?.length ?? balances.length;
 
   const hour = new Date().getHours();
@@ -100,25 +101,25 @@ function Dashboard() {
                     ₹{Math.abs(netBalance).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                   </div>
                   <p className="text-white/80 text-sm mt-1">
-                    {netBalance >= 0 ? "You're getting back" : "You owe in total"}
+                    {netBalance >= 0 ? "You are owed" : "You owe in total"}
                   </p>
                 </>
               )}
               <div className="mt-5 grid grid-cols-2 gap-3">
                 <div className="rounded-2xl bg-white/15 backdrop-blur p-3">
                   <div className="flex items-center gap-1.5 text-white/80 text-xs">
-                    <ArrowDownLeft className="size-3.5" /> Receivable
+                    <ArrowDownLeft className="size-3.5" /> To collect
                   </div>
                   <div className="mt-1 text-lg sm:text-xl font-semibold tabular">
-                    ₹{totalReceivable.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                    ₹{personalReceivable.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                   </div>
                 </div>
                 <div className="rounded-2xl bg-white/15 backdrop-blur p-3">
                   <div className="flex items-center gap-1.5 text-white/80 text-xs">
-                    <ArrowUpRight className="size-3.5" /> Owed
+                    <ArrowUpRight className="size-3.5" /> To pay
                   </div>
                   <div className="mt-1 text-lg sm:text-xl font-semibold tabular">
-                    ₹{totalOwed.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                    ₹{personalOwed.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                   </div>
                 </div>
               </div>
@@ -163,7 +164,10 @@ function Dashboard() {
                     <div className="size-8 rounded-full bg-muted overflow-hidden grid place-items-center text-sm shrink-0">
                       {b.avatar ? <img src={b.avatar} alt={b.name} className="size-full object-cover" /> : "👤"}
                     </div>
-                    <span className="flex-1 text-sm font-medium truncate">{b.name}{isMe ? " (you)" : ""}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{b.name}{isMe ? " (you)" : ""}</div>
+                      <div className="text-[11px] text-muted-foreground truncate">{b.email}</div>
+                    </div>
                     <span className={`text-sm font-semibold tabular ${settled ? "text-muted-foreground" : positive ? "text-green-400" : "text-red-400"}`}>
                       {settled ? "Settled" : `${positive ? "+" : "−"}₹${Math.abs(b.netBalance).toFixed(0)}`}
                     </span>
@@ -213,7 +217,7 @@ function Dashboard() {
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-sm truncate">{e.title || cat.label}</div>
                     <div className="text-xs text-muted-foreground">
-                      {e.paidBy.name} paid · {formatDay(e.createdAt)}
+                      {e.paidBy.name} · {e.paidBy.email} · {formatDay(e.createdAt)}
                     </div>
                   </div>
                   <div className="text-right shrink-0">

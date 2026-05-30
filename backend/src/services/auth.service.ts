@@ -60,6 +60,7 @@ async function issueTokenPair(user: IUser): Promise<{ accessToken: string; refre
     email: user.email,
     role: user.role,
     groupId: user.groupId?.toString() ?? null,
+    activeGroupId: user.groupId?.toString() ?? null,
   });
 
   return { accessToken, refreshToken: rawRefresh };
@@ -98,6 +99,11 @@ export async function googleLogin(idToken: string) {
       { $set: { name: profile.name, avatar: profile.picture } },
       { new: true },
     ) ?? user;
+  }
+
+  if (!user.groupIds.length && user.groupId) {
+    user.groupIds = [user.groupId];
+    await user.save();
   }
 
   const tokens = await issueTokenPair(user);
@@ -149,5 +155,9 @@ export async function logout(userId: string, rawToken?: string) {
 export async function getMe(userId: string): Promise<IUser> {
   const user = await User.findById(userId);
   if (!user) throw new AppError('User not found', 404);
+  if (!user.groupIds.length && user.groupId) {
+    user.groupIds = [user.groupId];
+    await user.save();
+  }
   return user;
 }

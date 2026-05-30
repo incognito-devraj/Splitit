@@ -6,35 +6,82 @@ import { AppError } from '../middleware/error.middleware';
 import { uniqueInviteCode } from '../utils/inviteCode';
 import { logger } from '../utils/logger';
 
+type GroupSummary = {
+  _id: string;
+  name: string;
+  description: string;
+  inviteCode: string;
+  adminId: string | IUser;
+  members: IUser[];
+  isPublic: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+async function ensureMembershipSnapshot(user: IUser) {
+  if (!user.groupIds.length && user.groupId) {
+    user.groupIds = [user.groupId];
+    await user.save();
+  }
+}
+
+async function setActiveGroup(user: IUser, groupId: Types.ObjectId | null) {
+  user.groupId = groupId;
+  if (groupId && !user.groupIds.some((existing) => existing.equals(groupId))) {
+    user.groupIds.push(groupId);
+  }
+  await user.save();
+}
+
+function uniqueGroupIds(user: IUser): Types.ObjectId[] {
+  const seen = new Set<string>();
+  const ids: Types.ObjectId[] = [];
+
+  for (const id of [...user.groupIds, ...(user.groupId ? [user.groupId] : [])]) {
+    const key = id.toString();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    ids.push(id);
+  }
+
+  return ids;
+}
+
 // ─── Create Group ─────────────────────────────────────────────────────────────
 
 export async function createGroup(userId: string, name: string, description = '') {
   const user = await User.findById(userId);
   if (!user) throw new AppError('User not found', 404);
-  if (user.groupId) throw new AppError('You are already in a group', 409);
+  await ensureMembershipSnapshot(user);
 
   const inviteCode = await uniqueInviteCode();
   const adminId = new Types.ObjectId(userId);
 
   const group = await Group.create({ name, description, inviteCode, adminId, members: [adminId] });
 
-  user.groupId = group._id;
+  if (!user.groupIds.some((id) => id.equals(group._id))) {
+    user.groupIds.push(group._id);
+  }
   user.role = 'admin';
-  await user.save();
+  await setActiveGroup(user, group._id);
 
   logger.info(`Group created: "${name}" by ${user.email}`);
   return { group, user };
 }
 
-// ─── Join Group (direct, no approval) ────────────────────────────────────────
+// ─── Join Group ───────────────────────────────────────────────────────────────
 
 export async function joinGroup(userId: string, inviteCode: string) {
   const user = await User.findById(userId);
   if (!user) throw new AppError('User not found', 404);
-  if (user.groupId) throw new AppError('You are already in a group', 409);
+  await ensureMembershipSnapshot(user);
 
   const group = await Group.findOne({ inviteCode: inviteCode.toUpperCase() });
   if (!group) throw new AppError('Invalid invite code', 400);
+
+  if (user.groupIds.some((existing) => existing.equals(group._id))) {
+    throw new AppError('You are already a member of this group', 409);
+  }
 
   const uid = new Types.ObjectId(userId);
   if (!group.members.some((m) => m.equals(uid))) {
@@ -42,15 +89,15 @@ export async function joinGroup(userId: string, inviteCode: string) {
     await group.save();
   }
 
-  user.groupId = group._id;
+  user.groupIds.push(group._id);
   user.role = 'member';
-  await user.save();
+  await setActiveGroup(user, group._id);
 
   logger.info(`${user.email} joined group "${group.name}"`);
   return { group, user };
 }
 
-// ─── Get Current Group ────────────────────────────────────────────────────────
+// ─── Current / memberships ────────────────────────────────────────────────────
 
 export async function getCurrentGroup(userId: string) {
   const user = await User.findById(userId);
@@ -64,15 +111,59 @@ export async function getCurrentGroup(userId: string) {
   return group;
 }
 
-// ─── Get Members ──────────────────────────────────────────────────────────────
+export async function getMyGroups(userId: string) {
+  const user = await User.findById(userId);
+  if (!user) throw new AppError('User not found', 404);
+  await ensureMembershipSnapshot(user);
+
+  const groupIds = uniqueGroupIds(user);
+  if (groupIds.length === 0) return [];
+
+  const groups = await Group.find({ _id: { $in: groupIds } })
+    .select('name description inviteCode adminId members isPublic createdAt updatedAt')
+    .populate<{ adminId: IUser }>('adminId', 'name email avatar')
+    .populate<{ members: IUser[] }>('members', 'name email avatar role')
+    .lean<GroupSummary[]>();
+
+  return groups.map((group) => ({
+    ...group,
+    _id: group._id.toString(),
+    adminId: typeof group.adminId === 'object' && group.adminId !== null
+      ? group.adminId
+      : group.adminId.toString(),
+    members: Array.isArray(group.members) ? group.members : [],
+  }));
+}
+
+export async function setActiveGroupForUser(userId: string, groupId: string) {
+  const user = await User.findById(userId);
+  if (!user) throw new AppError('User not found', 404);
+  await ensureMembershipSnapshot(user);
+
+  const gid = new Types.ObjectId(groupId);
+  const isMember = user.groupIds.some((id) => id.equals(gid)) || (user.groupId?.equals(gid) ?? false);
+  if (!isMember) throw new AppError('You are not a member of that group', 403);
+
+  await setActiveGroup(user, gid);
+
+  const group = await Group.findById(gid)
+    .populate<{ members: IUser[] }>('members', 'name email avatar role')
+    .populate<{ adminId: IUser }>('adminId', 'name email avatar');
+
+  if (!group) throw new AppError('Group not found', 404);
+  return group;
+}
+
+// ─── Member actions ──────────────────────────────────────────────────────────
 
 export async function getMembers(groupId: string) {
-  return User.find({ groupId: new Types.ObjectId(groupId) })
+  const gid = new Types.ObjectId(groupId);
+  return User.find({
+    $or: [{ groupId: gid }, { groupIds: gid }],
+  })
     .select('name email avatar role createdAt')
     .lean();
 }
-
-// ─── Remove Member ────────────────────────────────────────────────────────────
 
 export async function removeMember(adminId: string, targetUserId: string) {
   const admin = await User.findById(adminId);
@@ -86,21 +177,24 @@ export async function removeMember(adminId: string, targetUserId: string) {
   }
 
   const target = await User.findById(targetUserId);
-  if (!target || target.groupId?.toString() !== admin.groupId.toString()) {
+  if (!target) throw new AppError('User not found', 404);
+
+  const targetMembership = target.groupIds.some((id) => id.equals(group._id)) || target.groupId?.toString() === group._id.toString();
+  if (!targetMembership) {
     throw new AppError('User is not in your group', 404);
   }
 
   group.members = group.members.filter((m) => !m.equals(new Types.ObjectId(targetUserId)));
   await group.save();
 
-  target.groupId = null;
-  target.role = 'member';
+  target.groupIds = target.groupIds.filter((id) => !id.equals(group._id));
+  if (target.groupId?.toString() === group._id.toString()) {
+    target.groupId = target.groupIds[0] ?? null;
+  }
   await target.save();
 
   logger.info(`Admin removed ${target.email} from group "${group.name}"`);
 }
-
-// ─── Transfer Admin ───────────────────────────────────────────────────────────
 
 export async function transferAdmin(currentAdminId: string, newAdminId: string) {
   const admin = await User.findById(currentAdminId);
@@ -111,7 +205,9 @@ export async function transferAdmin(currentAdminId: string, newAdminId: string) 
   if (group.adminId.toString() !== currentAdminId) throw new AppError('Not the admin', 403);
 
   const newAdmin = await User.findById(newAdminId);
-  if (!newAdmin || newAdmin.groupId?.toString() !== admin.groupId.toString()) {
+  if (!newAdmin) throw new AppError('Target user not found', 404);
+  const isMember = newAdmin.groupIds.some((id) => id.equals(group._id)) || newAdmin.groupId?.toString() === group._id.toString();
+  if (!isMember) {
     throw new AppError('Target user is not in your group', 404);
   }
 
@@ -128,8 +224,6 @@ export async function transferAdmin(currentAdminId: string, newAdminId: string) 
   return group;
 }
 
-// ─── Leave Group ──────────────────────────────────────────────────────────────
-
 export async function leaveGroup(userId: string) {
   const user = await User.findById(userId);
   if (!user?.groupId) throw new AppError('You are not in a group', 403);
@@ -144,14 +238,12 @@ export async function leaveGroup(userId: string) {
   group.members = group.members.filter((m) => !m.equals(new Types.ObjectId(userId)));
   await group.save();
 
-  user.groupId = null;
-  user.role = 'member';
+  user.groupIds = user.groupIds.filter((id) => !id.equals(group._id));
+  user.groupId = user.groupIds[0] ?? null;
   await user.save();
 
   logger.info(`${user.email} left group "${group.name}"`);
 }
-
-// ─── Regenerate Invite Code ───────────────────────────────────────────────────
 
 export async function regenerateInviteCode(adminId: string) {
   const admin = await User.findById(adminId);
@@ -167,7 +259,7 @@ export async function regenerateInviteCode(adminId: string) {
   return group.inviteCode;
 }
 
-// ─── Discover Groups ──────────────────────────────────────────────────────────
+// ─── Discovery / settings ────────────────────────────────────────────────────
 
 export interface DiscoverGroupItem {
   _id: string;
@@ -186,9 +278,17 @@ export async function discoverGroups(
 ): Promise<{ groups: DiscoverGroupItem[]; total: number }> {
   const skip = (page - 1) * limit;
 
+  const user = await User.findById(userId).select('groupIds groupId').lean();
+  const memberships = new Set<string>(
+    [...(user?.groupIds ?? []), ...(user?.groupId ? [user.groupId] : [])].map((id) => id.toString()),
+  );
+
   const filter: Record<string, unknown> = { isPublic: true };
   if (search.trim()) {
     filter.name = { $regex: search.trim(), $options: 'i' };
+  }
+  if (memberships.size > 0) {
+    filter._id = { $nin: [...memberships].map((id) => new Types.ObjectId(id)) };
   }
 
   const [groups, total] = await Promise.all([
@@ -201,7 +301,6 @@ export async function discoverGroups(
     Group.countDocuments(filter),
   ]);
 
-  // Fetch user's join requests for these groups in one query
   const groupIds = groups.map((g) => g._id);
   const myRequests = await JoinRequest.find({
     groupId: { $in: groupIds },
@@ -218,14 +317,12 @@ export async function discoverGroups(
       _id:             g._id.toString(),
       name:            g.name,
       description:     g.description ?? '',
-      memberCount:     g.members.length,
+      memberCount:     Array.isArray(g.members) ? g.members.length : 0,
       createdAt:       g.createdAt,
       myRequestStatus: (requestMap.get(g._id.toString()) ?? 'none') as DiscoverGroupItem['myRequestStatus'],
     })),
   };
 }
-
-// ─── Update Group Settings ────────────────────────────────────────────────────
 
 export async function updateGroupSettings(
   adminId: string,

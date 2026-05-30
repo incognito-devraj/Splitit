@@ -17,17 +17,18 @@ export const Route = createFileRoute("/reports")({
 function Reports() {
   const { user } = useAuth();
   const [showFull, setShowFull] = useState(false);
+  const activeGroupId = user?.groupId ?? null;
 
   const { data: summary, isLoading } = useQuery({
-    queryKey: QK.summary,
+    queryKey: QK.summary(activeGroupId),
     queryFn: () => summaryApi.get().then((r) => r.data.data),
-    enabled: !!user?.groupId,
+    enabled: !!activeGroupId,
   });
 
   const { data: catData = [] } = useQuery({
-    queryKey: QK.summaryCategory,
+    queryKey: QK.summaryCategory(activeGroupId),
     queryFn: () => summaryApi.category().then((r) => r.data.data),
-    enabled: !!user?.groupId,
+    enabled: !!activeGroupId,
   });
 
   const max = catData[0]?.total ?? 1;

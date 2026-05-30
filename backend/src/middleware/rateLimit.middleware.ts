@@ -3,43 +3,35 @@ import { Request } from 'express';
 import { env } from '../config/env';
 
 const isTest = env.NODE_ENV === 'test';
-const isDev  = env.NODE_ENV === 'development';
+const isDev = env.NODE_ENV === 'development';
 
-/**
- * In development, skip rate limiting entirely for localhost.
- * This prevents false 429s when two browser windows share 127.0.0.1.
- */
 function keyGenerator(req: Request): string {
   const ip = (req.ip ?? req.socket.remoteAddress ?? 'unknown').replace('::ffff:', '');
-  // In dev, give each request a unique key so limits are never hit
-  if (isDev || isTest) return `dev-${ip}-${Date.now()}-${Math.random()}`;
-  return ip;
+  return `${ip}:${req.method}:${req.path}`;
 }
 
-export const apiLimiter = rateLimit({
-  windowMs: parseInt(env.RATE_LIMIT_WINDOW_MS, 10),
-  max: isTest || isDev ? 100_000 : parseInt(env.RATE_LIMIT_MAX, 10),
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator,
-  message: { success: false, message: 'Too many requests. Please try again later.' },
-});
+function buildLimiter(windowMs: number, max: number, message: string) {
+  return rateLimit({
+    windowMs,
+    max: isTest || isDev ? Number.MAX_SAFE_INTEGER : max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator,
+    skip: () => isDev || isTest,
+    message: { success: false, message },
+  });
+}
 
-export const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: isTest || isDev ? 100_000 : 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator,
-  message: { success: false, message: 'Too many auth attempts. Try again in 15 minutes.' },
-});
+export const publicLimiter = buildLimiter(
+  parseInt(env.RATE_LIMIT_WINDOW_MS, 10),
+  Math.max(parseInt(env.RATE_LIMIT_MAX, 10), 300),
+  'Too many requests. Please try again later.',
+);
 
-/** Dedicated limiter for join-request creation — more lenient than auth */
-export const joinRequestLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes
-  max: isTest || isDev ? 100_000 : 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator,
-  message: { success: false, message: 'Too many join requests. Please wait a few minutes.' },
-});
+export const authLimiter = buildLimiter(15 * 60 * 1000, 20, 'Too many auth attempts. Try again in 15 minutes.');
+
+export const joinRequestLimiter = buildLimiter(5 * 60 * 1000, 10, 'Too many join requests. Please wait a few minutes.');
+
+export const adminLimiter = buildLimiter(60 * 1000, 60, 'Too many administrative requests. Please slow down.');
+
+export const apiLimiter = publicLimiter;

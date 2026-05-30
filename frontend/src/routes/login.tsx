@@ -3,6 +3,7 @@ import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth";
 import { useState } from "react";
+import { ThemeToggle } from "@/lib/theme";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Login · PG Split" }] }),
@@ -42,7 +43,10 @@ function LoginPage() {
 
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <div className="dark min-h-screen bg-background text-foreground gradient-mesh-bg">
+      <div className="min-h-screen bg-background text-foreground theme-app-bg relative">
+        <div className="absolute right-4 top-4 z-10">
+          <ThemeToggle />
+        </div>
         {/* Two-column on desktop, single column on mobile */}
         <div className="min-h-screen flex flex-col lg:flex-row">
 
@@ -71,7 +75,7 @@ function LoginPage() {
           </div>
 
           {/* Right panel — login form */}
-          <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-8 py-12">
+          <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-8 py-16">
             <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
               className="w-full max-w-sm">
 

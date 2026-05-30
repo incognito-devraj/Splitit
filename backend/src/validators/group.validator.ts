@@ -15,6 +15,12 @@ export const joinGroupSchema = z.object({
   }),
 });
 
+export const setActiveGroupSchema = z.object({
+  body: z.object({
+    groupId: objectId,
+  }),
+});
+
 export const memberIdSchema = z.object({
   params: z.object({ id: objectId }),
 });

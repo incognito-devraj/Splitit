@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as ctrl from '../controllers/joinRequest.controller';
 import { authenticate, requireAdmin, requireGroup } from '../middleware/auth.middleware';
+import { joinRequestLimiter } from '../middleware/rateLimit.middleware';
 import { validate } from '../middleware/validate.middleware';
 import {
   createJoinRequestSchema,
@@ -11,6 +12,7 @@ import {
 
 const router = Router();
 router.use(authenticate);
+router.use(joinRequestLimiter);
 
 /** POST /api/join-requests — request to join a group via invite code */
 router.post('/', validate(createJoinRequestSchema), ctrl.requestToJoin);

@@ -7,6 +7,7 @@ import { AppError } from '../middleware/error.middleware';
 export interface BalanceEntry {
   userId: string;
   name: string;
+  email: string;
   avatar: string;
   totalPaid: number;   // sum of expenses this user paid
   totalOwed: number;   // sum of shares this user owes across all expenses
@@ -27,7 +28,9 @@ export async function computeGroupBalances(groupId: string): Promise<BalanceEntr
   const gid = new Types.ObjectId(groupId);
 
   const [members, expenses, settlements] = await Promise.all([
-    User.find({ groupId: gid }).select('_id name avatar').lean(),
+    User.find({
+      $or: [{ groupId: gid }, { groupIds: gid }],
+    }).select('_id name email avatar').lean(),
     Expense.find({ groupId: gid }).lean(),
     Settlement.find({ groupId: gid, status: 'approved' }).lean(),
   ]);
@@ -83,6 +86,7 @@ export async function computeGroupBalances(groupId: string): Promise<BalanceEntr
     return {
       userId:     id,
       name:       m.name,
+      email:      m.email,
       avatar:     m.avatar,
       totalPaid:  Math.round((paid.get(id) ?? 0) * 100) / 100,
       totalOwed:  Math.round((owed.get(id) ?? 0) * 100) / 100,
@@ -93,11 +97,12 @@ export async function computeGroupBalances(groupId: string): Promise<BalanceEntr
 
 export async function getMemberBalance(groupId: string, userId: string): Promise<BalanceEntry> {
   const user = await User.findById(userId).lean();
-  if (!user || user.groupId?.toString() !== groupId) throw new AppError('User not in group', 404);
+  const inGroup = !!user && (user.groupId?.toString() === groupId || user.groupIds?.some((id) => id.toString() === groupId));
+  if (!inGroup) throw new AppError('User not in group', 404);
 
   const balances = await computeGroupBalances(groupId);
   return balances.find((b) => b.userId === userId) ?? {
-    userId, name: user.name, avatar: user.avatar,
+    userId, name: user.name, email: user.email, avatar: user.avatar,
     totalPaid: 0, totalOwed: 0, netBalance: 0,
   };
 }

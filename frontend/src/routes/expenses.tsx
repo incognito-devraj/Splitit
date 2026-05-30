@@ -28,11 +28,12 @@ function Expenses() {
   const openSheet = useSheet((s) => s.openSheet);
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("");
+  const activeGroupId = user?.groupId ?? null;
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: QK.expenses,
+    queryKey: QK.expenses(activeGroupId),
     queryFn: () => expenseApi.list({ limit: 100 }).then((r) => r.data.data),
-    enabled: !!user?.groupId,
+    enabled: !!activeGroupId,
   });
 
   // Defensive: always an array regardless of API shape

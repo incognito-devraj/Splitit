@@ -24,6 +24,21 @@ export async function getCurrentGroup(req: Request, res: Response, next: NextFun
   } catch (e) { next(e); }
 }
 
+export async function getMyGroups(req: Request, res: Response, next: NextFunction) {
+  try {
+    const groups = await svc.getMyGroups(req.user._id);
+    ok(res, groups);
+  } catch (e) { next(e); }
+}
+
+export async function setActiveGroup(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { groupId } = req.body as { groupId: string };
+    const group = await svc.setActiveGroupForUser(req.user._id, groupId);
+    ok(res, group);
+  } catch (e) { next(e); }
+}
+
 export async function getMembers(req: Request, res: Response, next: NextFunction) {
   try {
     const members = await svc.getMembers(req.user.groupId!);

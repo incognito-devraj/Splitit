@@ -6,6 +6,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { groupApi, joinRequestApi, ApiDiscoverGroup } from "@/lib/api/endpoints";
 import { useAuth } from "@/lib/auth";
 import { QK } from "@/lib/queryKeys";
+import { ThemeToggle } from "@/lib/theme";
 import { Clock, Users, UserCheck, Search, Loader2, CheckCircle, XCircle } from "lucide-react";
 
 export const Route = createFileRoute("/onboarding")({
@@ -36,7 +37,7 @@ function OnboardingPage() {
     try {
       const { data } = await groupApi.create(groupName.trim());
       setUser(data.data.user);
-      qc.invalidateQueries({ queryKey: QK.group });
+      qc.invalidateQueries({ queryKey: QK.groupsMine });
       navigate({ to: "/" });
     } catch (e: unknown) {
       setError((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Failed to create group");
@@ -71,7 +72,7 @@ function OnboardingPage() {
         const { authApi } = await import("@/lib/api/endpoints");
         const meRes = await authApi.me();
         setUser(meRes.data.data);
-        qc.invalidateQueries({ queryKey: QK.group });
+        qc.invalidateQueries({ queryKey: QK.groupsMine });
         navigate({ to: "/" });
       } else if (data.data.request?.status === "rejected") {
         setError("Your request was rejected by the admin.");
@@ -85,7 +86,10 @@ function OnboardingPage() {
   };
 
   return (
-    <div className="dark min-h-screen bg-background text-foreground gradient-mesh-bg flex flex-col items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-background text-foreground theme-app-bg flex flex-col items-center justify-center px-4 py-8 relative">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="text-5xl mb-3">🏠</div>

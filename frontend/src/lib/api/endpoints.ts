@@ -9,6 +9,8 @@ export interface ApiUser {
   avatar: string;
   role: "admin" | "member";
   groupId: string | null;
+  activeGroupId?: string | null;
+  groupIds?: string[];
 }
 
 export interface ApiGroup {
@@ -44,6 +46,7 @@ export interface ApiExpense {
 export interface ApiBalance {
   userId: string;
   name: string;
+  email: string;
   avatar: string;
   totalPaid: number;
   totalOwed: number;
@@ -115,8 +118,12 @@ export const groupApi = {
     api.post<{ success: true; data: { group: ApiGroup; user: ApiUser } }>("/groups/create", { name, description }),
   join: (inviteCode: string) =>
     api.post<{ success: true; data: { group: ApiGroup; user: ApiUser } }>("/groups/join", { inviteCode }),
+  mine: () =>
+    api.get<{ success: true; data: ApiGroup[] }>("/groups/mine"),
   current: () =>
     api.get<{ success: true; data: ApiGroup }>("/groups/current"),
+  setActive: (groupId: string) =>
+    api.patch<{ success: true; data: ApiGroup }>("/groups/active", { groupId }),
   members: () =>
     api.get<{ success: true; data: ApiUser[] }>("/groups/members"),
   leave: () =>

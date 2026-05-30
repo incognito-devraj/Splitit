@@ -1,18 +1,18 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { Home, Receipt, Users, BarChart3, Plus, type LucideIcon } from "lucide-react";
+import { Home, Receipt, Users, BarChart3, Plus, Layers, type LucideIcon } from "lucide-react";
 import { useSheet } from "@/lib/sheet";
 
 type Tab = { to: string; label: string; icon: LucideIcon };
 
 const leftTabs: Tab[] = [
-  { to: "/",         label: "Home",     icon: Home },
-  { to: "/expenses", label: "Expenses", icon: Receipt },
+  { to: "/",       label: "Home",   icon: Home },
+  { to: "/groups", label: "Groups", icon: Layers },
 ];
 
 const rightTabs: Tab[] = [
-  { to: "/members",  label: "Members",  icon: Users },
-  { to: "/reports",  label: "Reports",  icon: BarChart3 },
+  { to: "/members", label: "Members", icon: Users },
+  { to: "/reports", label: "Reports", icon: BarChart3 },
 ];
 
 export function BottomNav() {
@@ -48,7 +48,7 @@ export function BottomNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed bottom-0 inset-x-0 z-40 pb-[env(safe-area-inset-bottom)] lg:hidden">
       <div className="mx-auto max-w-md px-3 pb-3">
         <div className="glass rounded-3xl shadow-[var(--shadow-card)] px-2 py-2 relative">
           <ul className="flex items-center justify-between">

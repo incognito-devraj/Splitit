@@ -12,8 +12,11 @@ import {
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import appCss from "../styles.css?url";
+import { ThemeProvider } from "@/lib/theme";
 
 const PUBLIC_ROUTES = ["/login", "/onboarding"];
+// Routes accessible to authenticated users who haven't joined a group yet
+const NO_GROUP_ROUTES = ["/onboarding", "/groups"];
 
 function AuthGuard() {
   const { isAuthenticated, isLoading, user, initialize } = useAuth();
@@ -37,7 +40,7 @@ function AuthGuard() {
       navigate({ to: user?.groupId ? "/" : "/onboarding" });
       return;
     }
-    if (isAuthenticated && !user?.groupId && !isPublic && pathname !== "/onboarding") {
+    if (isAuthenticated && !user?.groupId && !isPublic && !NO_GROUP_ROUTES.some((r) => pathname.startsWith(r))) {
       navigate({ to: "/onboarding" });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -45,7 +48,7 @@ function AuthGuard() {
 
   if (isLoading) {
     return (
-      <div className="dark min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center theme-app-bg">
         <div className="flex flex-col items-center gap-3">
           <div className="size-12 rounded-2xl gradient-primary grid place-items-center text-2xl">🏠</div>
           <div className="size-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -120,8 +123,10 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthGuard />
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthGuard />
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }

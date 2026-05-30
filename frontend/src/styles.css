@@ -158,6 +158,8 @@
   .gradient-primary { background: var(--gradient-primary); }
   .gradient-balance { background: var(--gradient-balance); }
   .gradient-mesh-bg { background-image: var(--gradient-mesh); }
+  .theme-app-bg { background-color: var(--background); }
+  .dark .theme-app-bg { background-image: var(--gradient-mesh); }
   .text-gradient {
     background: var(--gradient-primary);
     -webkit-background-clip: text;

@@ -11,7 +11,8 @@ import { logger } from '../utils/logger';
 
 async function validateMembers(groupId: string, ids: string[]): Promise<Types.ObjectId[]> {
   if (!ids.length) return [];
-  const members = await User.find({ groupId: new Types.ObjectId(groupId) }).select('_id').lean();
+  const gid = new Types.ObjectId(groupId);
+  const members = await User.find({ $or: [{ groupId: gid }, { groupIds: gid }] }).select('_id').lean();
   const memberSet = new Set(members.map((m) => m._id.toString()));
   const invalid = ids.filter((id) => !memberSet.has(id));
   if (invalid.length) throw new AppError(`Users not in group: ${invalid.join(', ')}`, 400);

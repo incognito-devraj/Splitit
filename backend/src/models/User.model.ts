@@ -10,6 +10,7 @@ export interface IUser extends Document {
   googleId: string;
   role: UserRole;
   groupId: Types.ObjectId | null;
+  groupIds: Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,6 +33,7 @@ const userSchema = new Schema<IUser>(
     googleId: { type: String, required: true },
     role: { type: String, enum: ['admin', 'member'], default: 'member' },
     groupId: { type: Schema.Types.ObjectId, ref: 'Group', default: null },
+    groupIds: [{ type: Schema.Types.ObjectId, ref: 'Group', default: [] }],
   },
   {
     timestamps: true,
@@ -39,6 +41,7 @@ const userSchema = new Schema<IUser>(
       transform(_doc, ret: Record<string, unknown>) {
         delete ret['googleId'];
         delete ret['__v'];
+        ret['activeGroupId'] = ret['groupId'] ?? null;
         return ret;
       },
     },
@@ -48,5 +51,6 @@ const userSchema = new Schema<IUser>(
 userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ googleId: 1 }, { unique: true });
 userSchema.index({ groupId: 1 });
+userSchema.index({ groupIds: 1 });
 
 export const User = mongoose.model<IUser>('User', userSchema);

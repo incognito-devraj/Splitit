@@ -17,7 +17,11 @@ export async function requestSettlement(
   if (fromUserId === toUserId) throw new AppError('Cannot settle with yourself', 400);
 
   const toUser = await User.findById(toUserId).lean();
-  if (!toUser || toUser.groupId?.toString() !== groupId) {
+  const inGroup = !!toUser && (
+    toUser.groupId?.toString() === groupId ||
+    toUser.groupIds?.some((id) => id.toString() === groupId)
+  );
+  if (!inGroup) {
     throw new AppError('Recipient is not in your group', 404);
   }
 

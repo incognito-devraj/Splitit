@@ -15,7 +15,9 @@ async function createRequest(
 ) {
   const user = await User.findById(userId);
   if (!user) throw new AppError('User not found', 404);
-  if (user.groupId) throw new AppError('You are already in a group', 409);
+  if (user.groupIds.some((id) => id.equals(group._id)) || user.groupId?.toString() === group._id.toString()) {
+    throw new AppError('You are already a member of this group', 409);
+  }
 
   // Check for existing pending request
   const existing = await JoinRequest.findOne({
@@ -114,6 +116,9 @@ export async function approveRequest(adminId: string, requestId: string) {
 
   // Update user
   targetUser.groupId = group._id;
+  if (!targetUser.groupIds.some((id) => id.equals(group._id))) {
+    targetUser.groupIds.push(group._id);
+  }
   targetUser.role = 'member';
   await targetUser.save();
 

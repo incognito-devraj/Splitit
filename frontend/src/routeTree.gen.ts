@@ -14,6 +14,7 @@ import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MembersRouteImport } from './routes/members'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as GroupsRouteImport } from './routes/groups'
 import { Route as ExpensesRouteImport } from './routes/expenses'
 import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as IndexRouteImport } from './routes/index'
@@ -43,6 +44,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GroupsRoute = GroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExpensesRoute = ExpensesRouteImport.update({
   id: '/expenses',
   path: '/expenses',
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/discover': typeof DiscoverRoute
   '/expenses': typeof ExpensesRoute
+  '/groups': typeof GroupsRoute
   '/login': typeof LoginRoute
   '/members': typeof MembersRoute
   '/onboarding': typeof OnboardingRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/discover': typeof DiscoverRoute
   '/expenses': typeof ExpensesRoute
+  '/groups': typeof GroupsRoute
   '/login': typeof LoginRoute
   '/members': typeof MembersRoute
   '/onboarding': typeof OnboardingRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/discover': typeof DiscoverRoute
   '/expenses': typeof ExpensesRoute
+  '/groups': typeof GroupsRoute
   '/login': typeof LoginRoute
   '/members': typeof MembersRoute
   '/onboarding': typeof OnboardingRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/discover'
     | '/expenses'
+    | '/groups'
     | '/login'
     | '/members'
     | '/onboarding'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/discover'
     | '/expenses'
+    | '/groups'
     | '/login'
     | '/members'
     | '/onboarding'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/'
     | '/discover'
     | '/expenses'
+    | '/groups'
     | '/login'
     | '/members'
     | '/onboarding'
@@ -127,6 +139,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DiscoverRoute: typeof DiscoverRoute
   ExpensesRoute: typeof ExpensesRoute
+  GroupsRoute: typeof GroupsRoute
   LoginRoute: typeof LoginRoute
   MembersRoute: typeof MembersRoute
   OnboardingRoute: typeof OnboardingRoute
@@ -171,6 +184,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/groups': {
+      id: '/groups'
+      path: '/groups'
+      fullPath: '/groups'
+      preLoaderRoute: typeof GroupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/expenses': {
       id: '/expenses'
       path: '/expenses'
@@ -199,6 +219,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DiscoverRoute: DiscoverRoute,
   ExpensesRoute: ExpensesRoute,
+  GroupsRoute: GroupsRoute,
   LoginRoute: LoginRoute,
   MembersRoute: MembersRoute,
   OnboardingRoute: OnboardingRoute,

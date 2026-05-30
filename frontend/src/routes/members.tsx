@@ -28,26 +28,27 @@ function Members() {
   const [copied, setCopied] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [tab, setTab] = useState<"members" | "requests">("members");
+  const activeGroupId = user?.groupId ?? null;
 
   const isAdmin = user?.role === "admin";
 
   const { data: balances = [], isLoading } = useQuery({
-    queryKey: QK.balances,
+    queryKey: QK.balances(activeGroupId),
     queryFn: () => balanceApi.all().then((r) => r.data.data),
-    enabled: !!user?.groupId,
+    enabled: !!activeGroupId,
     refetchInterval: 15_000,
   });
 
   const { data: group } = useQuery({
-    queryKey: QK.group,
+    queryKey: QK.group(activeGroupId),
     queryFn: () => groupApi.current().then((r) => r.data.data),
-    enabled: !!user?.groupId,
+    enabled: !!activeGroupId,
   });
 
   const { data: pendingRequests = [] } = useQuery({
     queryKey: ["join-requests-pending"],
     queryFn: () => joinRequestApi.pending().then((r) => r.data.data),
-    enabled: !!user?.groupId && isAdmin,
+    enabled: !!activeGroupId && isAdmin,
     refetchInterval: 30_000,
   });
 
@@ -55,9 +56,9 @@ function Members() {
     mutationFn: ({ toUserId, amt }: { toUserId: string; amt: number }) =>
       settlementApi.request(toUserId, amt),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: QK.balances });
-      qc.invalidateQueries({ queryKey: QK.settlements });
-      qc.invalidateQueries({ queryKey: QK.summary });
+      qc.invalidateQueries({ queryKey: ["balances"] });
+      qc.invalidateQueries({ queryKey: ["settlements"] });
+      qc.invalidateQueries({ queryKey: ["summary"] });
       setSettling(null); setSettleAmt("");
     },
   });
@@ -65,9 +66,9 @@ function Members() {
   const removeMutation = useMutation({
     mutationFn: (id: string) => groupApi.removeMember(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: QK.group });
-      qc.invalidateQueries({ queryKey: QK.members });
-      qc.invalidateQueries({ queryKey: QK.balances });
+      qc.invalidateQueries({ queryKey: ["group"] });
+      qc.invalidateQueries({ queryKey: ["members"] });
+      qc.invalidateQueries({ queryKey: ["balances"] });
       setRemovingId(null);
     },
   });
@@ -76,9 +77,9 @@ function Members() {
     mutationFn: (id: string) => joinRequestApi.approve(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["join-requests-pending"] });
-      qc.invalidateQueries({ queryKey: QK.group });
-      qc.invalidateQueries({ queryKey: QK.members });
-      qc.invalidateQueries({ queryKey: QK.balances });
+      qc.invalidateQueries({ queryKey: ["group"] });
+      qc.invalidateQueries({ queryKey: ["members"] });
+      qc.invalidateQueries({ queryKey: ["balances"] });
     },
   });
 
@@ -185,9 +186,10 @@ function Members() {
                         <div className="font-semibold flex items-center gap-1.5 flex-wrap">
                           <span className="truncate">{b.name}</span>
                           {isMe && <span className="text-[10px] bg-primary/15 text-primary px-1.5 py-0.5 rounded-full font-medium shrink-0">you</span>}
+                        <div className="text-[11px] text-muted-foreground truncate">{b.email}</div>
                         </div>
                         <div className={`text-xs font-medium mt-0.5 ${settled ? "text-muted-foreground" : positive ? "text-green-400" : "text-red-400"}`}>
-                          {settled ? "✅ Settled" : positive ? "Gets back" : "Owes"}
+                          {settled ? "✅ Settled" : positive ? "Should receive" : "Should pay"}
                         </div>
                       </div>
                       <div className="text-right shrink-0">
@@ -319,3 +321,4 @@ function Members() {
     </AppShell>
   );
 }
+

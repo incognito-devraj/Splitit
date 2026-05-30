@@ -24,10 +24,15 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     const payload = verifyAccessToken(token);
 
     // Confirm user still exists in DB
-    const user = await User.findById(payload.userId).lean();
+    const user = await User.findById(payload.userId);
     if (!user) {
       unauthorized(res, 'User no longer exists');
       return;
+    }
+
+    if (!user.groupIds.length && user.groupId) {
+      user.groupIds = [user.groupId];
+      await user.save();
     }
 
     req.user = {

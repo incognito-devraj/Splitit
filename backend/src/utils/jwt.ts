@@ -8,6 +8,7 @@ export interface AccessTokenPayload {
   email: string;
   role: UserRole;
   groupId: string | null;
+  activeGroupId?: string | null;
 }
 
 export interface RefreshTokenPayload {
