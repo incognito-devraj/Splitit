@@ -4,7 +4,13 @@ const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000/api";
 
 export const api = axios.create({
   baseURL: BASE,
-  headers: { "Content-Type": "application/json" },
+  headers: {
+    "Content-Type": "application/json",
+    // NOTE: Do NOT set Cache-Control / Pragma here.
+    // Custom headers on every request trigger a CORS preflight, and older
+    // proxy/CDN layers may reject them. Cache busting is handled server-side
+    // (etag disabled, no-store on auth routes).
+  },
   timeout: 15000,
 });
 
@@ -55,7 +61,6 @@ api.interceptors.response.use(
       original.headers.Authorization = `Bearer ${newAccess}`;
       return api(original);
     } catch {
-      // Refresh failed — clear tokens and redirect to login
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
       window.location.href = "/login";

@@ -12,7 +12,8 @@ export async function createExpense(req: Request, res: Response, next: NextFunct
 export async function listExpenses(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await svc.listExpenses(req.user.groupId!, req.query as Record<string, string>);
-    res.status(200).json({ success: true, ...result });
+    // Consistent shape: { success: true, data: [...], pagination: {...} }
+    res.status(200).json({ success: true, data: result.expenses, pagination: result.pagination });
   } catch (e) { next(e); }
 }
 
@@ -47,5 +48,12 @@ export async function getExpenseHistory(req: Request, res: Response, next: NextF
   try {
     const history = await svc.getExpenseHistory(req.params.id, req.user.groupId!);
     ok(res, history);
+  } catch (e) { next(e); }
+}
+
+export async function listGroupGuests(req: Request, res: Response, next: NextFunction) {
+  try {
+    const guests = await svc.listGroupGuests(req.user.groupId!);
+    ok(res, guests);
   } catch (e) { next(e); }
 }

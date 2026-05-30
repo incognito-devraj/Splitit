@@ -13,8 +13,10 @@ export interface IExpense extends Document {
   category: ExpenseCategory;
   amount: number;
   paidBy: Types.ObjectId;
-  sharedWith: Types.ObjectId[];
-  splitAmount: number;
+  sharedWith: Types.ObjectId[];       // registered members
+  guestParticipants: Types.ObjectId[]; // GuestParticipant refs
+  splitAmount: number;                 // amount / total participants
+  totalParticipants: number;           // sharedWith.length + guestParticipants.length
   notes: string;
   groupId: Types.ObjectId;
   createdAt: Date;
@@ -23,17 +25,28 @@ export interface IExpense extends Document {
 
 const expenseSchema = new Schema<IExpense>(
   {
-    title: { type: String, trim: true, maxlength: 200, default: '' },
+    title:    { type: String, trim: true, maxlength: 200, default: '' },
     category: { type: String, enum: CATEGORIES, required: true },
-    amount: { type: Number, required: true, min: [0.01, 'Amount must be > 0'] },
-    paidBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    amount:   { type: Number, required: true, min: [0.01, 'Amount must be > 0'] },
+    paidBy:   { type: Schema.Types.ObjectId, ref: 'User', required: true },
     sharedWith: {
       type: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-      validate: { validator: (a: Types.ObjectId[]) => a.length >= 1, message: 'sharedWith must have at least 1 member' },
+      validate: {
+        validator: function (this: IExpense, a: Types.ObjectId[]) {
+          // At least 1 participant total (member or guest)
+          return a.length + (this.guestParticipants?.length ?? 0) >= 1;
+        },
+        message: 'Expense must have at least 1 participant',
+      },
     },
-    splitAmount: { type: Number, required: true, min: 0 },
-    notes: { type: String, trim: true, maxlength: 500, default: '' },
-    groupId: { type: Schema.Types.ObjectId, ref: 'Group', required: true },
+    guestParticipants: {
+      type: [{ type: Schema.Types.ObjectId, ref: 'GuestParticipant' }],
+      default: [],
+    },
+    splitAmount:      { type: Number, required: true, min: 0 },
+    totalParticipants:{ type: Number, required: true, min: 1 },
+    notes:    { type: String, trim: true, maxlength: 500, default: '' },
+    groupId:  { type: Schema.Types.ObjectId, ref: 'Group', required: true },
   },
   {
     timestamps: true,

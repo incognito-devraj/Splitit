@@ -9,9 +9,16 @@ export const createExpenseSchema = z.object({
     title:      z.string().max(200).trim().optional(),
     category:   z.enum(categoryEnum, { errorMap: () => ({ message: 'Invalid category' }) }),
     amount:     z.number({ invalid_type_error: 'Amount must be a number' }).positive().max(1_000_000),
-    sharedWith: z.array(objectId).min(1).max(50),
+    sharedWith: z.array(objectId).min(0).max(50).default([]),
+    guestNames: z
+      .array(z.string().trim().min(1).max(100))
+      .max(20, 'Maximum 20 guests per expense')
+      .default([]),
     notes:      z.string().max(500).trim().optional(),
-  }),
+  }).refine(
+    (d) => d.sharedWith.length + d.guestNames.length >= 1,
+    { message: 'Expense must have at least 1 participant (member or guest)' },
+  ),
 });
 
 export const updateExpenseSchema = z.object({
@@ -20,7 +27,8 @@ export const updateExpenseSchema = z.object({
     title:      z.string().max(200).trim().optional(),
     category:   z.enum(categoryEnum).optional(),
     amount:     z.number().positive().max(1_000_000).optional(),
-    sharedWith: z.array(objectId).min(1).max(50).optional(),
+    sharedWith: z.array(objectId).min(0).max(50).optional(),
+    guestNames: z.array(z.string().trim().min(1).max(100)).max(20).optional(),
     notes:      z.string().max(500).trim().optional(),
   }).refine(d => Object.keys(d).length > 0, { message: 'Provide at least one field to update' }),
 });
@@ -36,5 +44,6 @@ export const listExpensesSchema = z.object({
     endDate:   z.string().optional(),
     page:      z.string().regex(/^\d+$/).transform(Number).optional(),
     limit:     z.string().regex(/^\d+$/).transform(Number).optional(),
+    _t:        z.string().optional(), // cache-bust param — ignored
   }),
 });

@@ -4,7 +4,8 @@ import { ok, created } from '../utils/response';
 
 export async function createGroup(req: Request, res: Response, next: NextFunction) {
   try {
-    const result = await svc.createGroup(req.user._id, req.body.name);
+    const { name, description } = req.body as { name: string; description?: string };
+    const result = await svc.createGroup(req.user._id, name, description);
     created(res, result);
   } catch (e) { next(e); }
 }
@@ -55,5 +56,25 @@ export async function regenerateInviteCode(req: Request, res: Response, next: Ne
   try {
     const inviteCode = await svc.regenerateInviteCode(req.user._id);
     ok(res, { inviteCode });
+  } catch (e) { next(e); }
+}
+
+export async function discoverGroups(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { search = '', page = '1', limit = '20' } = req.query as Record<string, string>;
+    const result = await svc.discoverGroups(
+      req.user._id,
+      search,
+      Math.max(1, parseInt(page, 10)),
+      Math.min(50, parseInt(limit, 10)),
+    );
+    ok(res, result);
+  } catch (e) { next(e); }
+}
+
+export async function updateGroupSettings(req: Request, res: Response, next: NextFunction) {
+  try {
+    const group = await svc.updateGroupSettings(req.user._id, req.body);
+    ok(res, group);
   } catch (e) { next(e); }
 }

@@ -1,6 +1,7 @@
 import { Types } from 'mongoose';
 import { Expense, IExpense, ExpenseCategory } from '../models/Expense.model';
 import { ExpenseAudit } from '../models/ExpenseAudit.model';
+import { GuestParticipant } from '../models/GuestParticipant.model';
 import { User } from '../models/User.model';
 import { AppError } from '../middleware/error.middleware';
 import { paginate } from '../utils/response';
@@ -9,11 +10,39 @@ import { logger } from '../utils/logger';
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 async function validateMembers(groupId: string, ids: string[]): Promise<Types.ObjectId[]> {
+  if (!ids.length) return [];
   const members = await User.find({ groupId: new Types.ObjectId(groupId) }).select('_id').lean();
   const memberSet = new Set(members.map((m) => m._id.toString()));
   const invalid = ids.filter((id) => !memberSet.has(id));
   if (invalid.length) throw new AppError(`Users not in group: ${invalid.join(', ')}`, 400);
   return ids.map((id) => new Types.ObjectId(id));
+}
+
+/**
+ * Resolve guest names → GuestParticipant ObjectIds.
+ * Creates new guests if they don't exist yet (upsert by name+group, case-insensitive).
+ */
+async function resolveGuests(
+  groupId: string,
+  createdBy: string,
+  guestNames: string[],
+): Promise<Types.ObjectId[]> {
+  if (!guestNames.length) return [];
+
+  const ids: Types.ObjectId[] = [];
+  for (const rawName of guestNames) {
+    const name = rawName.trim();
+    if (!name) continue;
+
+    // Case-insensitive upsert
+    const guest = await GuestParticipant.findOneAndUpdate(
+      { groupId: new Types.ObjectId(groupId), name: { $regex: `^${name}$`, $options: 'i' } },
+      { $setOnInsert: { name, groupId: new Types.ObjectId(groupId), createdBy: new Types.ObjectId(createdBy) } },
+      { upsert: true, new: true },
+    );
+    ids.push(guest._id);
+  }
+  return ids;
 }
 
 // ─── Create ───────────────────────────────────────────────────────────────────
@@ -26,25 +55,32 @@ export async function createExpense(
     category: ExpenseCategory;
     amount: number;
     sharedWith: string[];
+    guestNames?: string[]; // new: guest participant names
     notes?: string;
   },
 ) {
-  // paidBy is ALWAYS the logged-in user — never from body
   const sharedSet = new Set(body.sharedWith);
   sharedSet.add(userId); // payer always participates
 
-  const sharedWithIds = await validateMembers(groupId, [...sharedSet]);
-  const splitAmount = Math.round((body.amount / sharedWithIds.length) * 100) / 100;
+  const [sharedWithIds, guestIds] = await Promise.all([
+    validateMembers(groupId, [...sharedSet]),
+    resolveGuests(groupId, userId, body.guestNames ?? []),
+  ]);
+
+  const totalParticipants = sharedWithIds.length + guestIds.length;
+  const splitAmount = Math.round((body.amount / totalParticipants) * 100) / 100;
 
   const expense = await Expense.create({
-    title:      body.title ?? '',
-    category:   body.category,
-    amount:     body.amount,
-    paidBy:     new Types.ObjectId(userId),
-    sharedWith: sharedWithIds,
+    title:             body.title ?? '',
+    category:          body.category,
+    amount:            body.amount,
+    paidBy:            new Types.ObjectId(userId),
+    sharedWith:        sharedWithIds,
+    guestParticipants: guestIds,
     splitAmount,
-    notes:      body.notes ?? '',
-    groupId:    new Types.ObjectId(groupId),
+    totalParticipants,
+    notes:             body.notes ?? '',
+    groupId:           new Types.ObjectId(groupId),
   });
 
   await ExpenseAudit.create({
@@ -56,7 +92,7 @@ export async function createExpense(
     newData:   expense.toObject(),
   });
 
-  logger.info(`Expense created ₹${body.amount} [${body.category}] group=${groupId}`);
+  logger.info(`Expense created ₹${body.amount} [${body.category}] group=${groupId} guests=${guestIds.length}`);
   return populateExpense(expense._id.toString());
 }
 
@@ -80,8 +116,9 @@ export async function listExpenses(
 
   const [expenses, total] = await Promise.all([
     Expense.find(filter)
-      .populate('paidBy',     'name email avatar')
-      .populate('sharedWith', 'name email avatar')
+      .populate('paidBy',             'name email avatar')
+      .populate('sharedWith',         'name email avatar')
+      .populate('guestParticipants',  'name')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -108,7 +145,14 @@ export async function updateExpense(
   groupId: string,
   userId: string,
   isAdmin: boolean,
-  updates: { title?: string; category?: string; amount?: number; sharedWith?: string[]; notes?: string },
+  updates: {
+    title?: string;
+    category?: string;
+    amount?: number;
+    sharedWith?: string[];
+    guestNames?: string[];
+    notes?: string;
+  },
 ) {
   const expense = await Expense.findById(expenseId);
   if (!expense) throw new AppError('Expense not found', 404);
@@ -119,14 +163,14 @@ export async function updateExpense(
 
   const oldData = expense.toObject();
 
-  if (updates.title     !== undefined) expense.title    = updates.title;
-  if (updates.category  !== undefined) expense.category = updates.category as ExpenseCategory;
-  if (updates.notes     !== undefined) expense.notes    = updates.notes;
+  if (updates.title    !== undefined) expense.title    = updates.title;
+  if (updates.category !== undefined) expense.category = updates.category as ExpenseCategory;
+  if (updates.notes    !== undefined) expense.notes    = updates.notes;
 
-  if (updates.amount !== undefined || updates.sharedWith !== undefined) {
+  if (updates.amount !== undefined || updates.sharedWith !== undefined || updates.guestNames !== undefined) {
     const newAmount = updates.amount ?? expense.amount;
-    let newShared: Types.ObjectId[];
 
+    let newShared: Types.ObjectId[];
     if (updates.sharedWith) {
       const sharedSet = new Set(updates.sharedWith);
       sharedSet.add(expense.paidBy.toString());
@@ -135,9 +179,21 @@ export async function updateExpense(
       newShared = expense.sharedWith as Types.ObjectId[];
     }
 
-    expense.amount      = newAmount;
-    expense.sharedWith  = newShared;
-    expense.splitAmount = Math.round((newAmount / newShared.length) * 100) / 100;
+    let newGuests: Types.ObjectId[];
+    if (updates.guestNames !== undefined) {
+      newGuests = await resolveGuests(groupId, userId, updates.guestNames);
+    } else {
+      newGuests = expense.guestParticipants as Types.ObjectId[];
+    }
+
+    const totalParticipants = newShared.length + newGuests.length;
+    if (totalParticipants < 1) throw new AppError('Expense must have at least 1 participant', 400);
+
+    expense.amount            = newAmount;
+    expense.sharedWith        = newShared;
+    expense.guestParticipants = newGuests;
+    expense.totalParticipants = totalParticipants;
+    expense.splitAmount       = Math.round((newAmount / totalParticipants) * 100) / 100;
   }
 
   await expense.save();
@@ -180,9 +236,6 @@ export async function deleteExpense(expenseId: string, groupId: string, userId: 
 // ─── Audit History ────────────────────────────────────────────────────────────
 
 export async function getExpenseHistory(expenseId: string, groupId: string) {
-  // Verify expense belongs to group
-  const expense = await Expense.findById(expenseId).lean();
-  // Allow history even if deleted (audit records remain)
   const history = await ExpenseAudit.find({ expenseId: new Types.ObjectId(expenseId) })
     .populate('editedBy', 'name email avatar')
     .sort({ createdAt: -1 })
@@ -190,11 +243,21 @@ export async function getExpenseHistory(expenseId: string, groupId: string) {
   return history;
 }
 
+// ─── Guest autocomplete ───────────────────────────────────────────────────────
+
+export async function listGroupGuests(groupId: string) {
+  return GuestParticipant.find({ groupId: new Types.ObjectId(groupId) })
+    .select('name createdAt')
+    .sort({ name: 1 })
+    .lean();
+}
+
 // ─── Internal helper ─────────────────────────────────────────────────────────
 
 function populateExpense(id: string) {
   return Expense.findById(id)
-    .populate('paidBy',     'name email avatar')
-    .populate('sharedWith', 'name email avatar')
+    .populate('paidBy',            'name email avatar')
+    .populate('sharedWith',        'name email avatar')
+    .populate('guestParticipants', 'name')
     .lean();
 }

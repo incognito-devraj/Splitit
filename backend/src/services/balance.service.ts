@@ -47,17 +47,26 @@ export async function computeGroupBalances(groupId: string): Promise<BalanceEntr
   // Process expenses
   for (const exp of expenses) {
     const payerId = exp.paidBy.toString();
-    const share   = exp.amount / exp.sharedWith.length;
+    // totalParticipants includes guests; fall back to sharedWith.length for old records
+    const totalParts = (exp as { totalParticipants?: number }).totalParticipants ?? exp.sharedWith.length;
+    const share = exp.amount / totalParts;
 
     // Payer gets credited the full amount
     net.set(payerId,  (net.get(payerId)  ?? 0) + exp.amount);
     paid.set(payerId, (paid.get(payerId) ?? 0) + exp.amount);
 
-    // Each member in sharedWith is debited their share
+    // Each registered member in sharedWith is debited their share
     for (const uid of exp.sharedWith) {
       const id = uid.toString();
       net.set(id,  (net.get(id)  ?? 0) - share);
       owed.set(id, (owed.get(id) ?? 0) + share);
+    }
+    // Guest shares reduce the payer's net credit (guests don't have accounts to settle)
+    const guestCount = (exp as { guestParticipants?: unknown[] }).guestParticipants?.length ?? 0;
+    if (guestCount > 0) {
+      // Guests' shares are absorbed — payer effectively paid for them
+      // Net effect: payer's credit is reduced by guest shares (they won't be repaid)
+      net.set(payerId, (net.get(payerId) ?? 0) - share * guestCount);
     }
   }
 

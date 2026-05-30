@@ -25,12 +25,20 @@ async function verifyGoogleToken(idToken: string): Promise<GoogleProfile> {
   if (!env.GOOGLE_CLIENT_ID) {
     throw new AppError('Google OAuth is not configured on this server', 501);
   }
-  const ticket = await googleClient.verifyIdToken({
-    idToken,
-    audience: env.GOOGLE_CLIENT_ID,
-  });
+
+  let ticket;
+  try {
+    ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: env.GOOGLE_CLIENT_ID,
+    });
+  } catch (err) {
+    logger.error('Google token verification failed:', (err as Error).message);
+    throw new AppError('Google sign-in failed. Please try again.', 401);
+  }
+
   const p = ticket.getPayload();
-  if (!p?.sub || !p.email) throw new AppError('Invalid Google token', 401);
+  if (!p?.sub || !p.email) throw new AppError('Invalid Google token payload', 401);
   return { sub: p.sub, email: p.email, name: p.name ?? p.email, picture: p.picture ?? '' };
 }
 
@@ -62,16 +70,44 @@ async function issueTokenPair(user: IUser): Promise<{ accessToken: string; refre
 export async function googleLogin(idToken: string) {
   const profile = await verifyGoogleToken(idToken);
 
-  // Upsert user — update name/avatar on every login
-  const user = await User.findOneAndUpdate(
-    { googleId: profile.sub },
-    { $set: { name: profile.name, email: profile.email, avatar: profile.picture } },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
-  );
+  try {
+  // Try to find by googleId first, then fall back to email (handles pre-existing accounts)
+  let user = await User.findOne({ googleId: profile.sub });
+
+  if (!user) {
+    // Check if an account with this email already exists (link it)
+    user = await User.findOneAndUpdate(
+      { email: profile.email },
+      { $set: { googleId: profile.sub, name: profile.name, avatar: profile.picture } },
+      { new: true },
+    );
+  }
+
+  if (!user) {
+    // Brand new user — create them
+    user = await User.create({
+      googleId: profile.sub,
+      email: profile.email,
+      name: profile.name,
+      avatar: profile.picture,
+    });
+  } else {
+    // Existing user found by googleId — refresh name/avatar
+    user = await User.findOneAndUpdate(
+      { _id: user._id },
+      { $set: { name: profile.name, avatar: profile.picture } },
+      { new: true },
+    ) ?? user;
+  }
 
   const tokens = await issueTokenPair(user);
   logger.info(`Login: ${user.email}`);
   return { user, ...tokens };
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    logger.error('googleLogin DB error:', (err as Error).message);
+    throw new AppError('Login failed due to a server error. Please try again.', 500);
+  }
 }
 
 export async function refreshTokens(rawToken: string) {

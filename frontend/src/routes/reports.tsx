@@ -7,6 +7,7 @@ import { AppShell } from "@/components/AppShell";
 import { CATEGORIES } from "@/lib/store";
 import { summaryApi } from "@/lib/api/endpoints";
 import { useAuth } from "@/lib/auth";
+import { QK } from "@/lib/queryKeys";
 
 export const Route = createFileRoute("/reports")({
   head: () => ({ meta: [{ title: "Reports · PG Split" }] }),
@@ -18,13 +19,13 @@ function Reports() {
   const [showFull, setShowFull] = useState(false);
 
   const { data: summary, isLoading } = useQuery({
-    queryKey: ["summary"],
+    queryKey: QK.summary,
     queryFn: () => summaryApi.get().then((r) => r.data.data),
     enabled: !!user?.groupId,
   });
 
   const { data: catData = [] } = useQuery({
-    queryKey: ["summary-category"],
+    queryKey: QK.summaryCategory,
     queryFn: () => summaryApi.category().then((r) => r.data.data),
     enabled: !!user?.groupId,
   });
@@ -33,23 +34,25 @@ function Reports() {
 
   const shareWhatsApp = () => {
     if (!summary?.whatsappText) return;
-    const url = `https://wa.me/?text=${encodeURIComponent(summary.whatsappText)}`;
-    window.open(url, "_blank");
+    window.open(`https://wa.me/?text=${encodeURIComponent(summary.whatsappText)}`, "_blank");
   };
 
   return (
     <AppShell>
-      <div className="px-5 pt-6">
+      <div className="px-4 sm:px-6 pt-6">
         <h1 className="text-3xl font-semibold tracking-tight">Reports</h1>
         <p className="text-sm text-muted-foreground mt-1">Spending overview</p>
       </div>
 
       {/* Total card */}
-      <div className="px-5 mt-5">
+      <div className="px-4 sm:px-6 mt-5">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
           className="rounded-3xl p-5 bg-card border border-border">
           {isLoading ? (
-            <div className="h-12 bg-muted rounded-xl animate-pulse" />
+            <div className="space-y-2">
+              <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+              <div className="h-10 w-40 bg-muted rounded animate-pulse" />
+            </div>
           ) : (
             <>
               <div className="text-xs text-muted-foreground">Total spent</div>
@@ -65,7 +68,7 @@ function Reports() {
       </div>
 
       {/* Full Report button */}
-      <div className="px-5 mt-4">
+      <div className="px-4 sm:px-6 mt-4">
         <motion.button whileTap={{ scale: 0.97 }} onClick={() => setShowFull(true)}
           className="w-full h-12 rounded-2xl border border-primary/30 bg-primary/10 text-primary font-semibold flex items-center justify-center gap-2">
           <FileText className="size-4" /> Generate Full Report
@@ -73,8 +76,11 @@ function Reports() {
       </div>
 
       {/* By Category */}
-      <div className="px-5 mt-6">
+      <div className="px-4 sm:px-6 mt-6">
         <h2 className="text-base font-semibold">By category</h2>
+        {catData.length === 0 && !isLoading && (
+          <p className="text-sm text-muted-foreground mt-3 text-center py-6">No expenses yet</p>
+        )}
         <div className="mt-3 space-y-2">
           {catData.map(({ category, total }, i) => {
             const cat = CATEGORIES.find((c) => c.id === category) ?? CATEGORIES[CATEGORIES.length - 1];
@@ -105,13 +111,13 @@ function Reports() {
         </div>
       </div>
 
-      {/* Summary card */}
-      <div className="px-5 mt-6 pb-4">
-        <h2 className="text-base font-semibold">Summary</h2>
+      {/* Summary + WhatsApp */}
+      <div className="px-4 sm:px-6 mt-6 pb-4">
+        <h2 className="text-base font-semibold">Who owes what</h2>
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
           className="mt-3 rounded-3xl p-5 bg-card border border-border">
-          <div className="text-xs uppercase tracking-wider text-muted-foreground">📌 Who owes what</div>
-          <div className="mt-3 space-y-2">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-3">📌 Summary</div>
+          <div className="space-y-2">
             {(summary?.summary ?? []).map((s) => (
               <div key={s.userId} className="flex items-center justify-between text-sm">
                 <span className="font-medium">{s.name}</span>
@@ -138,7 +144,8 @@ function Reports() {
             className="fixed inset-0 z-[60] bg-background/95 backdrop-blur-sm flex flex-col">
             <div className="flex items-center justify-between px-5 pt-6 pb-3">
               <h2 className="text-xl font-semibold tracking-tight">Full Report</h2>
-              <button onClick={() => setShowFull(false)} className="size-10 rounded-full glass grid place-items-center">
+              <button onClick={() => setShowFull(false)}
+                className="size-10 rounded-full glass grid place-items-center">
                 <X className="size-5" />
               </button>
             </div>
@@ -163,9 +170,14 @@ function Reports() {
                   {(summary?.balances ?? []).map((b) => (
                     <div key={b.userId} className="flex items-center justify-between text-sm">
                       <span className="font-medium">{b.name}</span>
-                      <span className={`tabular font-semibold ${b.netBalance >= 0 ? "text-green-400" : "text-red-400"}`}>
-                        {b.netBalance >= 0 ? "+" : "−"}₹{Math.abs(b.netBalance).toFixed(0)}
-                      </span>
+                      <div className="text-right">
+                        <span className={`tabular font-semibold ${b.netBalance >= 0 ? "text-green-400" : "text-red-400"}`}>
+                          {b.netBalance >= 0 ? "+" : "−"}₹{Math.abs(b.netBalance).toFixed(0)}
+                        </span>
+                        <div className="text-[10px] text-muted-foreground">
+                          paid ₹{b.totalPaid.toFixed(0)} · owes ₹{b.totalOwed.toFixed(0)}
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -175,6 +187,10 @@ function Reports() {
                 <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-sans leading-relaxed">
                   {summary?.whatsappText}
                 </pre>
+                <button onClick={shareWhatsApp}
+                  className="mt-3 w-full h-10 rounded-xl gradient-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-2">
+                  <Share2 className="size-3.5" /> Share
+                </button>
               </div>
             </div>
           </motion.div>

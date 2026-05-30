@@ -28,11 +28,10 @@ export const useAuth = create<AuthState>()(
         const { data } = await authApi.googleLogin(idToken);
         const { user, accessToken, refreshToken } = data.data;
 
-        // Store in localStorage for axios interceptor
         localStorage.setItem("accessToken", accessToken);
         localStorage.setItem("refreshToken", refreshToken);
 
-        set({ user, accessToken, refreshToken, isAuthenticated: true });
+        set({ user, accessToken, refreshToken, isAuthenticated: true, isLoading: false });
       },
 
       logout: async () => {
@@ -42,7 +41,7 @@ export const useAuth = create<AuthState>()(
         } catch { /* ignore */ }
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
-        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false, isLoading: false });
       },
 
       setUser: (user: ApiUser) => set({ user }),
@@ -54,19 +53,40 @@ export const useAuth = create<AuthState>()(
           return;
         }
         try {
+          // Always fetch fresh user data from /me on app start
           const { data } = await authApi.me();
-          localStorage.setItem("accessToken", token);
-          set({ user: data.data, isAuthenticated: true, isLoading: false });
+          const freshUser = data.data;
+          // Sync tokens from localStorage
+          const storedRefresh = localStorage.getItem("refreshToken");
+          set({
+            user: freshUser,
+            accessToken: token,
+            refreshToken: storedRefresh,
+            isAuthenticated: true,
+            isLoading: false,
+          });
         } catch {
           localStorage.removeItem("accessToken");
           localStorage.removeItem("refreshToken");
-          set({ user: null, isAuthenticated: false, isLoading: false });
+          set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false, isLoading: false });
         }
       },
     }),
     {
       name: "splito-auth",
-      partialize: (s) => ({ accessToken: s.accessToken, refreshToken: s.refreshToken, user: s.user }),
+      // Only persist tokens — user data is always refreshed from server
+      partialize: (s) => ({
+        accessToken: s.accessToken,
+        refreshToken: s.refreshToken,
+        user: s.user,
+      }),
+      // On rehydration, mark as loading so initialize() runs
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.isLoading = true;
+          state.isAuthenticated = !!state.accessToken;
+        }
+      },
     },
   ),
 );

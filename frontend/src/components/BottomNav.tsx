@@ -1,6 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { Home, Receipt, BarChart3, Settings as SettingsIcon, Plus, type LucideIcon } from "lucide-react";
+import { Home, Receipt, Users, BarChart3, Plus, type LucideIcon } from "lucide-react";
 import { useSheet } from "@/lib/sheet";
 
 type Tab = { to: string; label: string; icon: LucideIcon };
@@ -11,8 +11,8 @@ const leftTabs: Tab[] = [
 ];
 
 const rightTabs: Tab[] = [
+  { to: "/members",  label: "Members",  icon: Users },
   { to: "/reports",  label: "Reports",  icon: BarChart3 },
-  { to: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 export function BottomNav() {
@@ -39,11 +39,7 @@ export function BottomNav() {
             className={`size-5 relative ${active ? "text-primary" : "text-muted-foreground"}`}
             strokeWidth={active ? 2.4 : 2}
           />
-          <span
-            className={`text-[10px] relative font-medium ${
-              active ? "text-primary" : "text-muted-foreground"
-            }`}
-          >
+          <span className={`text-[10px] relative font-medium ${active ? "text-primary" : "text-muted-foreground"}`}>
             {t.label}
           </span>
         </Link>

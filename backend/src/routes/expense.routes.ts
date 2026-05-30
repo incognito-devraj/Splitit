@@ -9,62 +9,15 @@ import {
   listExpensesSchema,
 } from '../validators/expense.validator';
 
-/**
- * @swagger
- * tags:
- *   name: Expenses
- *   description: Expense management
- */
-
 const router = Router();
 router.use(authenticate, requireGroup);
 
-/** @swagger
- * /expenses:
- *   post:
- *     summary: Add expense (paidBy = logged-in user)
- *     tags: [Expenses]
- */
-router.post('/', validate(createExpenseSchema), ctrl.createExpense);
-
-/** @swagger
- * /expenses:
- *   get:
- *     summary: List expenses with filters & pagination
- *     tags: [Expenses]
- */
-router.get('/', validate(listExpensesSchema), ctrl.listExpenses);
-
-/** @swagger
- * /expenses/{id}:
- *   get:
- *     summary: Get single expense
- *     tags: [Expenses]
- */
-router.get('/:id', validate(expenseIdSchema), ctrl.getExpense);
-
-/** @swagger
- * /expenses/{id}:
- *   put:
- *     summary: Edit expense (payer or admin)
- *     tags: [Expenses]
- */
-router.put('/:id', validate(updateExpenseSchema), ctrl.updateExpense);
-
-/** @swagger
- * /expenses/{id}:
- *   delete:
- *     summary: Delete expense (payer or admin)
- *     tags: [Expenses]
- */
-router.delete('/:id', validate(expenseIdSchema), ctrl.deleteExpense);
-
-/** @swagger
- * /expenses/{id}/history:
- *   get:
- *     summary: Get audit trail for an expense
- *     tags: [Expenses]
- */
+router.post('/',    validate(createExpenseSchema),  ctrl.createExpense);
+router.get('/',     validate(listExpensesSchema),   ctrl.listExpenses);
+router.get('/guests', ctrl.listGroupGuests);         // GET /expenses/guests — autocomplete
+router.get('/:id',  validate(expenseIdSchema),      ctrl.getExpense);
+router.put('/:id',  validate(updateExpenseSchema),  ctrl.updateExpense);
+router.delete('/:id', validate(expenseIdSchema),    ctrl.deleteExpense);
 router.get('/:id/history', validate(expenseIdSchema), ctrl.getExpenseHistory);
 
 export default router;

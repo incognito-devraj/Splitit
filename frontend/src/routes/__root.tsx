@@ -22,7 +22,8 @@ function AuthGuard() {
 
   useEffect(() => {
     initialize();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount only
 
   useEffect(() => {
     if (isLoading) return;
@@ -39,7 +40,8 @@ function AuthGuard() {
     if (isAuthenticated && !user?.groupId && !isPublic && pathname !== "/onboarding") {
       navigate({ to: "/onboarding" });
     }
-  }, [isAuthenticated, isLoading, user, pathname]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, isLoading, user?.groupId, pathname]);
 
   if (isLoading) {
     return (

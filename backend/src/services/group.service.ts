@@ -1,13 +1,14 @@
 import { Types } from 'mongoose';
 import { Group, IGroup } from '../models/Group.model';
 import { User, IUser } from '../models/User.model';
+import { JoinRequest } from '../models/JoinRequest.model';
 import { AppError } from '../middleware/error.middleware';
 import { uniqueInviteCode } from '../utils/inviteCode';
 import { logger } from '../utils/logger';
 
 // ─── Create Group ─────────────────────────────────────────────────────────────
 
-export async function createGroup(userId: string, name: string) {
+export async function createGroup(userId: string, name: string, description = '') {
   const user = await User.findById(userId);
   if (!user) throw new AppError('User not found', 404);
   if (user.groupId) throw new AppError('You are already in a group', 409);
@@ -15,7 +16,7 @@ export async function createGroup(userId: string, name: string) {
   const inviteCode = await uniqueInviteCode();
   const adminId = new Types.ObjectId(userId);
 
-  const group = await Group.create({ name, inviteCode, adminId, members: [adminId] });
+  const group = await Group.create({ name, description, inviteCode, adminId, members: [adminId] });
 
   user.groupId = group._id;
   user.role = 'admin';
@@ -25,7 +26,7 @@ export async function createGroup(userId: string, name: string) {
   return { group, user };
 }
 
-// ─── Join Group ───────────────────────────────────────────────────────────────
+// ─── Join Group (direct, no approval) ────────────────────────────────────────
 
 export async function joinGroup(userId: string, inviteCode: string) {
   const user = await User.findById(userId);
@@ -164,4 +165,84 @@ export async function regenerateInviteCode(adminId: string) {
   await group.save();
 
   return group.inviteCode;
+}
+
+// ─── Discover Groups ──────────────────────────────────────────────────────────
+
+export interface DiscoverGroupItem {
+  _id: string;
+  name: string;
+  description: string;
+  memberCount: number;
+  createdAt: Date;
+  myRequestStatus: 'none' | 'pending' | 'approved' | 'rejected';
+}
+
+export async function discoverGroups(
+  userId: string,
+  search = '',
+  page = 1,
+  limit = 20,
+): Promise<{ groups: DiscoverGroupItem[]; total: number }> {
+  const skip = (page - 1) * limit;
+
+  const filter: Record<string, unknown> = { isPublic: true };
+  if (search.trim()) {
+    filter.name = { $regex: search.trim(), $options: 'i' };
+  }
+
+  const [groups, total] = await Promise.all([
+    Group.find(filter)
+      .select('name description members createdAt')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Group.countDocuments(filter),
+  ]);
+
+  // Fetch user's join requests for these groups in one query
+  const groupIds = groups.map((g) => g._id);
+  const myRequests = await JoinRequest.find({
+    groupId: { $in: groupIds },
+    userId:  new Types.ObjectId(userId),
+  })
+    .select('groupId status')
+    .lean();
+
+  const requestMap = new Map(myRequests.map((r) => [r.groupId.toString(), r.status]));
+
+  return {
+    total,
+    groups: groups.map((g) => ({
+      _id:             g._id.toString(),
+      name:            g.name,
+      description:     g.description ?? '',
+      memberCount:     g.members.length,
+      createdAt:       g.createdAt,
+      myRequestStatus: (requestMap.get(g._id.toString()) ?? 'none') as DiscoverGroupItem['myRequestStatus'],
+    })),
+  };
+}
+
+// ─── Update Group Settings ────────────────────────────────────────────────────
+
+export async function updateGroupSettings(
+  adminId: string,
+  updates: { name?: string; description?: string; isPublic?: boolean },
+) {
+  const admin = await User.findById(adminId);
+  if (!admin?.groupId) throw new AppError('Not in a group', 403);
+
+  const group = await Group.findById(admin.groupId);
+  if (!group) throw new AppError('Group not found', 404);
+  if (group.adminId.toString() !== adminId) throw new AppError('Admin only', 403);
+
+  if (updates.name        !== undefined) group.name        = updates.name;
+  if (updates.description !== undefined) group.description = updates.description;
+  if (updates.isPublic    !== undefined) group.isPublic    = updates.isPublic;
+
+  await group.save();
+  logger.info(`Group settings updated by ${admin.email}`);
+  return group;
 }
