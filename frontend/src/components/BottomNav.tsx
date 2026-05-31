@@ -1,5 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import { Home, Receipt, Users, BarChart3, Plus, Layers, type LucideIcon } from "lucide-react";
 import { useSheet } from "@/lib/sheet";
 
@@ -18,6 +19,21 @@ const rightTabs: Tab[] = [
 export function BottomNav() {
   const { pathname } = useLocation();
   const openSheet = useSheet((s) => s.openSheet);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+    const onScroll = () => {
+      const currentScrollY = window.scrollY;
+      const scrollingDown = currentScrollY > lastScrollY;
+      setVisible(currentScrollY < 24 || !scrollingDown);
+      lastScrollY = currentScrollY;
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const renderTab = (t: Tab) => {
     const active = pathname === t.to;
@@ -48,9 +64,13 @@ export function BottomNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 pb-[env(safe-area-inset-bottom)] lg:hidden">
+    <nav
+      className={`fixed bottom-0 inset-x-0 z-40 pb-[env(safe-area-inset-bottom)] lg:hidden transition-all duration-300 ${
+        visible ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"
+      }`}
+    >
       <div className="mx-auto max-w-md px-3 pb-3">
-        <div className="glass rounded-3xl shadow-[var(--shadow-card)] px-2 py-2 relative">
+        <div className="glass rounded-3xl shadow-[var(--shadow-card)] px-2 py-2 relative backdrop-blur-2xl">
           <ul className="flex items-center justify-between">
             {leftTabs.map(renderTab)}
             {/* Center FAB */}

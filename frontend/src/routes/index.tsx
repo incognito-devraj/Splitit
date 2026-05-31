@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowDownLeft, ArrowUpRight, Plus } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Plus, Users } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell, GroupSwitcher } from "@/components/AppShell";
 import { ExpenseDetailDialog } from "@/components/ExpenseDetailDialog";
@@ -24,6 +24,7 @@ function formatDay(ts: string) {
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
+// Home dashboard: greeting, balances, quick add, and recent expenses.
 function Dashboard() {
   const { user } = useAuth();
   const openSheet = useSheet((s) => s.openSheet);
@@ -65,22 +66,29 @@ function Dashboard() {
 
   return (
     <AppShell>
-      <div className="px-4 sm:px-6 pt-2 sm:pt-4">
+      {/* Greeting and current group row */}
+      <div className="px-4 sm:px-6 pt-4 sm:pt-3">
         <div className="min-w-0">
           <p className="text-sm text-muted-foreground">
             {greeting}, {user?.name?.split(" ")[0] ?? "there"}
           </p>
-          <div className="mt-1 flex items-center gap-2">
-            <h1 className="min-w-0 text-xl sm:text-2xl font-semibold tracking-tight truncate">
+          <div className="-mt-1 flex items-center gap-2 min-w-0">
+            <h1 className="min-w-0 text-2xl sm:text-2xl font-bold tracking-tight truncate">
               {groupData?.name ?? "Your PG"}
             </h1>
+            <div className="inline-flex items-center pl-2 gap-1.5 text-xs text-muted-foreground shrink-0">
+              <Users className="size-4 text-primary" />
+              <span className="font-semibold tabular text-foreground">{groupData?.members?.length ?? 0}</span>
+            </div>
             <GroupSwitcher compact />
           </div>
         </div>
       </div>
 
+      {/* Balance summary and quick actions */}
       <div className="px-4 sm:px-6 mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
         <div className="space-y-4">
+          {/* Net balance card */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -122,6 +130,7 @@ function Dashboard() {
             </div>
           </motion.div>
 
+          {/* Quick-add category grid */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm sm:text-base font-semibold">Quick add</h2>
@@ -150,6 +159,7 @@ function Dashboard() {
             </div>
           </div>
 
+          {/* Desktop balances list */}
           <div className="hidden lg:block">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-base font-semibold">Balances</h2>
@@ -188,6 +198,7 @@ function Dashboard() {
           </div>
         </div>
 
+        {/* Recent expenses list */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm sm:text-base font-semibold">Recent Expenses</h2>

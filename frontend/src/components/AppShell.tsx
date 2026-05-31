@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -30,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
+// Desktop navigation rail with the app logo and route links.
 function SidebarNav() {
   const { pathname } = useLocation();
 
@@ -71,41 +72,65 @@ function SidebarNav() {
   );
 }
 
+// Mobile-only top bar with brand, theme toggle, and profile entry.
 function MobileHeader() {
   const { user } = useAuth();
-  const { data: activeGroup } = useQuery({
-    queryKey: QK.group(user?.groupId ?? null),
-    queryFn: () => groupApi.current().then((response) => response.data.data),
-    enabled: !!user?.groupId,
-  });
-  const memberCount = activeGroup?.members?.length ?? 0;
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
-    <div className="sm:hidden sticky top-0 z-30 border-b border-border/70 bg-background/90 backdrop-blur-xl px-4 py-3">
-      <div className="flex items-center justify-between gap-3">
-        <Link to="/" className="flex items-center gap-3 min-w-0">
-          <img src="/favicons/android-chrome-192x192.png" alt="Splitit logo" className="size-10 rounded-2xl shadow shrink-0" />
-          <div className="min-w-0">
-            <div className="text-sm font-semibold leading-none truncate">Splitit</div>
-            <div className="text-[11px] text-muted-foreground truncate">Expense Splitter</div>
-          </div>
-        </Link>
-        <div className="flex items-center gap-2">
-          <div className="inline-flex items-center gap-1.5 rounded-2xl border border-border/80 bg-card/90 px-2.5 py-2 shadow-[var(--shadow-card)]">
-            <Users className="size-4 text-primary" />
-            <span className="text-sm font-semibold tabular">{memberCount}</span>
-          </div>
-          <Link to="/settings" className="size-9 rounded-full overflow-hidden bg-muted border border-border">
-            {user?.avatar
-              ? <img src={user.avatar} alt={user.name} className="size-full object-cover" />
-              : <div className="size-full grid place-items-center"><Settings className="size-4 text-muted-foreground" /></div>}
+    <div className="sm:hidden sticky top-0 z-30 px-4 pt-3">
+      <div className="relative">
+        <div
+          className={`absolute inset-0 flex items-center justify-between gap-3 rounded-full border border-border/60 px-3 py-2 shadow-[var(--shadow-card)] backdrop-blur-2xl bg-background/55 transition-all duration-300 ${
+            scrolled ? "opacity-100 translate-y-0" : "pointer-events-none -translate-y-3 opacity-0"
+          }`}
+        >
+          <Link to="/" className="flex items-center gap-3 min-w-0">
+            <img src="/favicons/android-chrome-192x192.png" alt="Splitit logo" className="size-9 rounded-2xl shadow shrink-0" />
+            <div className="min-w-0">
+              <div className="text-sm font-semibold leading-none truncate">Splitit</div>
+              <div className="text-[11px] text-muted-foreground truncate">Expense Splitter</div>
+            </div>
           </Link>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <ThemeToggle className="size-9" />
+            <Link to="/settings" className="size-9 rounded-full overflow-hidden">
+              {user?.avatar
+                ? <img src={user.avatar} alt={user.name} className="size-full object-cover" />
+                : <div className="size-full grid place-items-center"><Settings className="size-4 text-muted-foreground" /></div>}
+            </Link>
+          </div>
+        </div>
+        <div className={`flex items-center justify-between gap-3 transition-all duration-300 ${scrolled ? "opacity-0" : "opacity-100"}`}>
+          <Link to="/" className="flex items-center gap-3 min-w-0">
+            <img src="/favicons/android-chrome-192x192.png" alt="Splitit logo" className="size-9 rounded-2xl shadow shrink-0" />
+            <div className="min-w-0">
+              <div className="text-sm font-semibold leading-none truncate">Splitit</div>
+              <div className="text-[11px] text-muted-foreground truncate">Expense Splitter</div>
+            </div>
+          </Link>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <ThemeToggle className="size-9" />
+            <Link to="/settings" className="size-9 rounded-full overflow-hidden">
+              {user?.avatar
+                ? <img src={user.avatar} alt={user.name} className="size-full object-cover" />
+                : <div className="size-full grid place-items-center"><Settings className="size-4 text-muted-foreground" /></div>}
+            </Link>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
+// Page shell that wires together nav, header, FAB, and sheets.
 export function AppShell({ children }: { children: ReactNode }) {
   const openSheet = useSheet((s) => s.openSheet);
   return (
@@ -120,7 +145,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25 }}
-              className="w-full px-4 sm:px-6 py-4"
+              className="w-full px-4 sm:px-6 pt-0 sm:pt-2 pb-4"
             >
               <DesktopTopBar />
               {children}
@@ -136,37 +161,30 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
+// Desktop utility area; keeps the top-right controls together.
 function DesktopTopBar() {
   const { user } = useAuth();
-  const { data: activeGroup } = useQuery({
+  useQuery({
     queryKey: QK.group(user?.groupId ?? null),
     queryFn: () => groupApi.current().then((response) => response.data.data),
     enabled: !!user?.groupId,
   });
 
-  const memberCount = activeGroup?.members?.length ?? 0;
-
   return (
-    <div className="hidden sm:flex items-center justify-between gap-3 mb-4">
-      <div className="flex items-center gap-2 min-w-0">
-        <div className="inline-flex items-center gap-2 rounded-2xl border border-border/80 bg-card/90 px-3 py-2 shadow-[var(--shadow-card)]">
-          <Users className="size-4 text-primary" />
-          <span className="text-sm font-semibold tabular">{memberCount}</span>
-          <span className="hidden sm:inline text-xs text-muted-foreground">members</span>
-        </div>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <Link to="/settings" className="size-9 rounded-full overflow-hidden bg-muted border border-border">
+    <div className="hidden sm:flex items-center justify-end gap-2 mb-3">
+      <div className="flex items-center gap-2 shrink-0 rounded-full bg-background/55 backdrop-blur-xl border border-border/60 px-2 py-1 shadow-[var(--shadow-card)]">
+        <ThemeToggle className="size-9" />
+        <Link to="/settings" className="size-9 rounded-full overflow-hidden">
           {user?.avatar
             ? <img src={user.avatar} alt={user.name} className="size-full object-cover" />
             : <div className="size-full grid place-items-center"><Settings className="size-4 text-muted-foreground" /></div>}
         </Link>
-        <ThemeToggle />
       </div>
     </div>
   );
 }
 
+// Floating action button for creating a new expense.
 function DesktopFab({ onClick }: { onClick: () => void }) {
   return (
     <motion.button
@@ -180,6 +198,7 @@ function DesktopFab({ onClick }: { onClick: () => void }) {
   );
 }
 
+// Dropdown used to switch between groups.
 export function GroupSwitcher({ compact = false }: { compact?: boolean }) {
   const { user, setUser } = useAuth();
   const queryClient = useQueryClient();
@@ -224,17 +243,16 @@ export function GroupSwitcher({ compact = false }: { compact?: boolean }) {
         <button
           className={
             compact
-              ? "inline-flex h-10 items-center justify-center gap-2 rounded-full border border-border/70 bg-background/45 px-2 text-sm font-semibold text-foreground backdrop-blur hover:border-primary/40 hover:bg-primary/10 transition-colors sm:h-11 sm:px-3"
+              ? "inline-flex h-10 items-center justify-center gap-1 rounded-full px-1 text-sm font-semibold text-foreground transition-colors sm:h-11"
               : "w-full rounded-[28px] border border-border/80 bg-card/90 backdrop-blur-xl text-left shadow-[var(--shadow-card)] hover:border-primary/30 transition-colors p-4 sm:p-5"
           }
         >
           {compact ? (
             <>
-              <div className="size-7 rounded-full bg-primary/10 text-primary grid place-items-center shrink-0 sm:size-8 sm:rounded-xl">
+              <div className="size-8 text-primary grid place-items-center shrink-0">
                 <Layers className="size-4" />
               </div>
-              <span className="hidden sm:inline text-sm">Groups</span>
-              <ChevronDown className="hidden size-4 text-muted-foreground shrink-0 sm:block" />
+              <ChevronDown className="size-4 text-muted-foreground shrink-0" />
             </>
           ) : (
             <>
@@ -242,10 +260,13 @@ export function GroupSwitcher({ compact = false }: { compact?: boolean }) {
               <div className="mt-1 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="font-semibold text-base sm:text-lg truncate">{activeGroup?.name ?? "Select a group"}</div>
-                  <div className="text-xs text-muted-foreground truncate">{groups.length} memberships · Switch group</div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{groups.length} groups</span>
+                    <span className="text-muted-foreground/50">•</span>
+                    <span>Switch</span>
+                  </div>
                 </div>
                 <div className="shrink-0 rounded-full border border-border/80 bg-background/40 px-3 py-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span className="hidden sm:inline">Switch</span>
                   <ChevronDown className="size-3.5" />
                 </div>
               </div>

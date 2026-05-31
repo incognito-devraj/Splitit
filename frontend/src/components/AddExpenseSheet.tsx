@@ -120,14 +120,14 @@ export function AddExpenseSheet() {
   return (
     <AnimatePresence>
       {open && (
-        <motion.div className="fixed inset-0 z-[60]"
+        <motion.div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6"
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <motion.div className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={closeSheet} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
           <motion.div
-            initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 32, stiffness: 320 }}
-            className="absolute inset-x-0 bottom-0 top-6 rounded-t-[28px] bg-card overflow-hidden flex flex-col"
+            initial={{ opacity: 0, scale: 0.96, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 20 }}
+            transition={{ type: "spring", damping: 30, stiffness: 320 }}
+            className="relative z-10 w-full max-w-3xl max-h-[86vh] rounded-3xl border border-border/70 bg-card overflow-hidden flex flex-col shadow-[0_30px_100px_rgba(0,0,0,0.45)]"
           >
             {/* Handle + Header */}
             <div className="flex items-center justify-between px-5 pt-3 pb-2">
@@ -200,7 +200,7 @@ export function AddExpenseSheet() {
 function StepWrap({ children }: { children: React.ReactNode }) {
   return (
     <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.22 }} className="px-5 py-5">
+      exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.22 }} className="px-5 py-5 sm:px-6 sm:py-6">
       {children}
     </motion.div>
   );
@@ -213,7 +213,7 @@ function StepCategory({ onPick }: { onPick: (c: Category) => void }) {
     <StepWrap>
       <h2 className="text-2xl font-semibold tracking-tight">What did you spend on?</h2>
       <p className="text-sm text-muted-foreground mt-1">Pick a category to start</p>
-      <div className="mt-6 grid grid-cols-3 gap-3">
+      <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-3">
         {CATEGORIES.map((c, i) => (
           <motion.button key={c.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.03 }} whileTap={{ scale: 0.94 }} onClick={() => onPick(c.id)}
