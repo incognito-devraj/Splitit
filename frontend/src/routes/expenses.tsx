@@ -11,7 +11,7 @@ import { useSheet } from "@/lib/sheet";
 import { QK } from "@/lib/queryKeys";
 
 export const Route = createFileRoute("/expenses")({
-  head: () => ({ meta: [{ title: "Expenses · PG Split" }] }),
+  head: () => ({ meta: [{ title: "Splitit - Expenses" }] }),
   component: Expenses,
 });
 

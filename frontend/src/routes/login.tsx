@@ -6,7 +6,7 @@ import { useState } from "react";
 import { ThemeToggle } from "@/lib/theme";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Login · PG Split" }] }),
+  head: () => ({ meta: [{ title: "Splitit - Login" }] }),
   component: LoginPage,
 });
 
@@ -54,7 +54,7 @@ function LoginPage() {
           <div className="hidden lg:flex lg:w-1/2 gradient-balance flex-col items-center justify-center p-12 text-white">
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
               <div className="size-24 rounded-3xl bg-white/20 grid place-items-center text-5xl mb-8 shadow-2xl">🏠</div>
-              <h1 className="text-5xl font-bold tracking-tight mb-4">PG Splito</h1>
+              <h1 className="text-5xl font-bold tracking-tight mb-4">Splitit</h1>
               <p className="text-white/80 text-xl max-w-sm leading-relaxed">
                 The smartest way to split expenses with your PG mates.
               </p>
@@ -86,7 +86,7 @@ function LoginPage() {
                   className="size-20 rounded-3xl gradient-primary mx-auto grid place-items-center shadow-[var(--shadow-float)] mb-5">
                   <span className="text-4xl">🏠</span>
                 </motion.div>
-                <h1 className="text-3xl font-bold tracking-tight">PG Splito</h1>
+                <h1 className="text-3xl font-bold tracking-tight">Splitit</h1>
                 <p className="text-muted-foreground mt-2 text-sm">Split expenses with your PG mates, effortlessly.</p>
               </div>
 

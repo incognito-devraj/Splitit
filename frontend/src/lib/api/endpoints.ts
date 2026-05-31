@@ -169,12 +169,12 @@ export const joinRequestApi = {
 
 export const expenseApi = {
   create: (body: {
-    title?: string;
+    title: string;
     category: string;
     amount: number;
     sharedWith: string[];
     guestNames?: string[];
-    notes?: string;
+    notes: string;
   }) =>
     api.post<{ success: true; data: ApiExpense }>("/expenses", body),
   list: (params?: { category?: string; page?: number; limit?: number }) =>

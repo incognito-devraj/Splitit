@@ -8,7 +8,7 @@ import { groupApi, joinRequestApi, ApiDiscoverGroup } from "@/lib/api/endpoints"
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/discover")({
-  head: () => ({ meta: [{ title: "Discover Groups · PG Split" }] }),
+  head: () => ({ meta: [{ title: "Splitit - Discover Groups" }] }),
   component: DiscoverPage,
 });
 

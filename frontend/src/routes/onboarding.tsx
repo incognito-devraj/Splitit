@@ -10,7 +10,7 @@ import { ThemeToggle } from "@/lib/theme";
 import { Clock, Users, UserCheck, Search, Loader2, CheckCircle, XCircle } from "lucide-react";
 
 export const Route = createFileRoute("/onboarding")({
-  head: () => ({ meta: [{ title: "Setup · PG Split" }] }),
+  head: () => ({ meta: [{ title: "Splitit - Setup" }] }),
   component: OnboardingPage,
 });
 

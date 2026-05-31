@@ -71,7 +71,7 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customSiteTitle: 'PG Splito API',
+  customSiteTitle: 'Splitit API',
   customCss: '.swagger-ui .topbar { display: none }',
 }));
 app.get('/api/docs.json', (_req, res) => res.json(swaggerSpec));

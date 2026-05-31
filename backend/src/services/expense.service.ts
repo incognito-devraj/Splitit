@@ -52,12 +52,12 @@ export async function createExpense(
   userId: string,
   groupId: string,
   body: {
-    title?: string;
+    title: string;
     category: ExpenseCategory;
     amount: number;
     sharedWith: string[];
     guestNames?: string[]; // new: guest participant names
-    notes?: string;
+    notes: string;
   },
 ) {
   const sharedSet = new Set(body.sharedWith);
@@ -72,7 +72,7 @@ export async function createExpense(
   const splitAmount = Math.round((body.amount / totalParticipants) * 100) / 100;
 
   const expense = await Expense.create({
-    title:             body.title ?? '',
+    title:             body.title,
     category:          body.category,
     amount:            body.amount,
     paidBy:            new Types.ObjectId(userId),
@@ -80,7 +80,7 @@ export async function createExpense(
     guestParticipants: guestIds,
     splitAmount,
     totalParticipants,
-    notes:             body.notes ?? '',
+    notes:             body.notes,
     groupId:           new Types.ObjectId(groupId),
   });
 

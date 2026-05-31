@@ -9,12 +9,20 @@ import { useAuth } from "@/lib/auth";
 import { QK } from "@/lib/queryKeys";
 
 export const Route = createFileRoute("/members")({
-  head: () => ({ meta: [{ title: "Members · PG Split" }] }),
+  head: () => ({ meta: [{ title: "Splitit - Members" }] }),
   component: Members,
 });
 
-const EMOJIS = ["🦊","🐼","🦁","🐯","🐻","🦄","🐸","🦋","🐺","🦅"];
-const COLORS = ["oklch(0.72 0.18 155)","oklch(0.68 0.20 245)","oklch(0.78 0.16 75)","oklch(0.65 0.25 295)","oklch(0.72 0.18 35)","oklch(0.70 0.18 195)"];
+const EMOJIS = ["🦊", "🐼", "🦁", "🐯", "🐻", "🦄", "🐸", "🦋", "🐺", "🦅"];
+const COLORS = [
+  "oklch(0.72 0.18 155)",
+  "oklch(0.68 0.20 245)",
+  "oklch(0.78 0.16 75)",
+  "oklch(0.65 0.25 295)",
+  "oklch(0.72 0.18 35)",
+  "oklch(0.70 0.18 195)",
+];
+
 function avatarProps(id: string) {
   const n = id.charCodeAt(id.length - 1) % EMOJIS.length;
   return { emoji: EMOJIS[n], color: COLORS[n % COLORS.length] };
@@ -53,13 +61,13 @@ function Members() {
   });
 
   const settleMutation = useMutation({
-    mutationFn: ({ toUserId, amt }: { toUserId: string; amt: number }) =>
-      settlementApi.request(toUserId, amt),
+    mutationFn: ({ toUserId, amt }: { toUserId: string; amt: number }) => settlementApi.request(toUserId, amt),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["balances"] });
       qc.invalidateQueries({ queryKey: ["settlements"] });
       qc.invalidateQueries({ queryKey: ["summary"] });
-      setSettling(null); setSettleAmt("");
+      setSettling(null);
+      setSettleAmt("");
     },
   });
 
@@ -98,7 +106,6 @@ function Members() {
 
   return (
     <AppShell>
-      {/* Header */}
       <div className="px-4 sm:px-6 pt-6">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -107,10 +114,11 @@ function Members() {
               {balances.length} people · {group?.name ?? "your PG"}
             </p>
           </div>
-          {/* Invite code pill */}
           {group?.inviteCode && (
-            <button onClick={copyCode}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-card border border-border shrink-0">
+            <button
+              onClick={copyCode}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-card border border-border shrink-0"
+            >
               <span className="font-mono font-bold tracking-widest text-sm">{group.inviteCode}</span>
               {copied ? <Check className="size-3.5 text-green-400" /> : <Copy className="size-3.5 text-muted-foreground" />}
             </button>
@@ -118,16 +126,19 @@ function Members() {
         </div>
       </div>
 
-      {/* Tab bar — only show for admin */}
       {isAdmin && (
         <div className="px-4 sm:px-6 mt-4">
           <div className="flex rounded-2xl bg-card border border-border p-1">
-            <button onClick={() => setTab("members")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-semibold transition-all ${tab === "members" ? "gradient-primary text-primary-foreground" : "text-muted-foreground"}`}>
+            <button
+              onClick={() => setTab("members")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-semibold transition-all ${tab === "members" ? "gradient-primary text-primary-foreground" : "text-muted-foreground"}`}
+            >
               <Users className="size-4" /> Members
             </button>
-            <button onClick={() => setTab("requests")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-semibold transition-all relative ${tab === "requests" ? "gradient-primary text-primary-foreground" : "text-muted-foreground"}`}>
+            <button
+              onClick={() => setTab("requests")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-semibold transition-all relative ${tab === "requests" ? "gradient-primary text-primary-foreground" : "text-muted-foreground"}`}
+            >
               <Clock className="size-4" /> Requests
               {pendingRequests.length > 0 && (
                 <span className="absolute -top-1 -right-1 size-5 rounded-full bg-red-500 text-white text-[10px] font-bold grid place-items-center">
@@ -140,12 +151,11 @@ function Members() {
       )}
 
       <AnimatePresence mode="wait">
-        {/* ── MEMBERS TAB ─────────────────────────────────────────────── */}
         {tab === "members" && (
           <motion.div key="members-tab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             {isLoading && (
               <div className="px-4 sm:px-6 mt-4 space-y-3">
-                {[1,2,3].map(i => <div key={i} className="h-24 rounded-3xl bg-card border border-border animate-pulse" />)}
+                {[1, 2, 3].map((i) => <div key={i} className="h-24 rounded-3xl bg-card border border-border animate-pulse" />)}
               </div>
             )}
 
@@ -157,15 +167,16 @@ function Members() {
                   <p className="text-sm text-muted-foreground mt-1">Share the invite code to add your PG mates</p>
                 </div>
                 {group?.inviteCode && (
-                  <button onClick={copyCode}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl gradient-primary text-primary-foreground text-sm font-semibold">
+                  <button
+                    onClick={copyCode}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl gradient-primary text-primary-foreground text-sm font-semibold"
+                  >
                     <Copy className="size-4" /> Copy Invite Code
                   </button>
                 )}
               </div>
             )}
 
-            {/* Desktop grid / Mobile list */}
             <div className="px-4 sm:px-6 mt-4 pb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {balances.map((b, i) => {
                 const isMe = b.userId === user?._id;
@@ -174,59 +185,84 @@ function Members() {
                 const { emoji, color } = avatarProps(b.userId);
 
                 return (
-                  <motion.div key={b.userId} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                  <motion.div
+                    key={b.userId}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.04 }}
-                    className="rounded-3xl bg-card border border-border overflow-hidden">
+                    className="rounded-3xl bg-card border border-border overflow-hidden"
+                  >
                     <div className="p-4 flex items-center gap-3">
-                      <div className="size-12 sm:size-14 rounded-full grid place-items-center text-xl shrink-0 overflow-hidden"
-                        style={{ background: `color-mix(in oklab, ${color} 28%, transparent)` }}>
+                      <div
+                        className="size-12 sm:size-14 rounded-full grid place-items-center text-xl shrink-0 overflow-hidden"
+                        style={{ background: `color-mix(in oklab, ${color} 28%, transparent)` }}
+                      >
                         {b.avatar ? <img src={b.avatar} alt={b.name} className="size-full object-cover rounded-full" /> : emoji}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold flex items-center gap-1.5 flex-wrap">
                           <span className="truncate">{b.name}</span>
                           {isMe && <span className="text-[10px] bg-primary/15 text-primary px-1.5 py-0.5 rounded-full font-medium shrink-0">you</span>}
+                        </div>
                         <div className="text-[11px] text-muted-foreground truncate">{b.email}</div>
-                        </div>
-                        <div className={`text-xs font-medium mt-0.5 ${settled ? "text-muted-foreground" : positive ? "text-green-400" : "text-red-400"}`}>
-                          {settled ? "✅ Settled" : positive ? "Should receive" : "Should pay"}
-                        </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <div className={`text-lg font-semibold tabular ${settled ? "text-muted-foreground" : positive ? "text-green-400" : "text-red-400"}`}>
+                        <div className={`text-lg font-semibold tabular ${settled ? "text-muted-foreground" : positive ? "text-foreground" : "text-[#ffb1b1]"}`}>
                           {settled ? "₹0" : `${positive ? "+" : "−"}₹${Math.abs(b.netBalance).toFixed(0)}`}
                         </div>
                         {isAdmin && !isMe && (
-                          <button onClick={() => setRemovingId(b.userId)}
-                            className="mt-0.5 text-[10px] text-muted-foreground hover:text-red-400 flex items-center gap-0.5 ml-auto">
+                          <button
+                            onClick={() => setRemovingId(b.userId)}
+                            className="mt-0.5 text-[10px] text-muted-foreground hover:text-red-400 flex items-center gap-0.5 ml-auto"
+                          >
                             <UserMinus className="size-3" /> Remove
                           </button>
                         )}
                       </div>
                     </div>
 
-                    {/* Settle up */}
                     {!isMe && !settled && (
                       <div className="px-4 pb-4">
                         <AnimatePresence mode="wait">
                           {settling === b.userId ? (
-                            <motion.div key="form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="flex gap-2">
-                              <input type="number" value={settleAmt} onChange={(e) => setSettleAmt(e.target.value)}
-                                placeholder={`₹${Math.abs(b.netBalance).toFixed(0)}`} autoFocus
-                                className="flex-1 h-9 px-3 rounded-xl bg-background border border-border text-sm focus:outline-none focus:border-primary" />
-                              <button onClick={() => settleMutation.mutate({ toUserId: b.userId, amt: Number(settleAmt) || Math.abs(b.netBalance) })}
+                            <motion.div
+                              key="form"
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="flex gap-2"
+                            >
+                              <input
+                                type="number"
+                                value={settleAmt}
+                                onChange={(e) => setSettleAmt(e.target.value)}
+                                placeholder={`₹${Math.abs(b.netBalance).toFixed(0)}`}
+                                autoFocus
+                                className="flex-1 h-9 px-3 rounded-xl bg-background border border-border text-sm focus:outline-none focus:border-primary"
+                              />
+                              <button
+                                onClick={() => settleMutation.mutate({ toUserId: b.userId, amt: Number(settleAmt) || Math.abs(b.netBalance) })}
                                 disabled={settleMutation.isPending}
-                                className="px-4 h-9 rounded-xl gradient-primary text-primary-foreground text-sm font-semibold disabled:opacity-50">
+                                className="px-4 h-9 rounded-xl gradient-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
+                              >
                                 {settleMutation.isPending ? "…" : "Send"}
                               </button>
-                              <button onClick={() => { setSettling(null); setSettleAmt(""); }} className="size-9 rounded-xl bg-muted grid place-items-center">
+                              <button
+                                onClick={() => { setSettling(null); setSettleAmt(""); }}
+                                className="size-9 rounded-xl bg-muted grid place-items-center"
+                              >
                                 <X className="size-4" />
                               </button>
                             </motion.div>
                           ) : (
-                            <motion.button key="btn" initial={{ opacity: 0 }} animate={{ opacity: 1 }} whileTap={{ scale: 0.97 }}
+                            <motion.button
+                              key="btn"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              whileTap={{ scale: 0.97 }}
                               onClick={() => { setSettling(b.userId); setSettleAmt(Math.abs(b.netBalance).toFixed(0)); }}
-                              className="w-full h-9 rounded-xl border border-primary/30 bg-primary/10 text-primary text-sm font-semibold">
+                              className="w-full h-9 rounded-xl border border-primary/30 bg-primary/10 text-primary text-sm font-semibold"
+                            >
                               💸 Settle · ₹{Math.abs(b.netBalance).toFixed(0)}
                             </motion.button>
                           )}
@@ -240,10 +276,14 @@ function Members() {
           </motion.div>
         )}
 
-        {/* ── JOIN REQUESTS TAB (admin only) ───────────────────────────── */}
         {tab === "requests" && isAdmin && (
-          <motion.div key="requests-tab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="px-4 sm:px-6 mt-4 pb-4 space-y-3">
+          <motion.div
+            key="requests-tab"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="px-4 sm:px-6 mt-4 pb-4 space-y-3"
+          >
             {pendingRequests.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
                 <UserCheck className="size-12 opacity-30" />
@@ -251,9 +291,13 @@ function Members() {
               </div>
             )}
             {pendingRequests.map((req, i) => (
-              <motion.div key={req._id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+              <motion.div
+                key={req._id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="p-4 rounded-3xl bg-card border border-border">
+                className="p-4 rounded-3xl bg-card border border-border"
+              >
                 <div className="flex items-start gap-3">
                   <div className="size-12 rounded-full bg-muted overflow-hidden grid place-items-center shrink-0">
                     {req.userId.avatar
@@ -264,9 +308,11 @@ function Members() {
                     <div className="font-semibold">{req.userId.name}</div>
                     <div className="text-xs text-muted-foreground truncate">{req.userId.email}</div>
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        req.memberType === "occasional" ? "bg-amber-500/15 text-amber-400" : "bg-blue-500/15 text-blue-400"
-                      }`}>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          req.memberType === "occasional" ? "bg-amber-500/15 text-amber-400" : "bg-blue-500/15 text-blue-400"
+                        }`}
+                      >
                         {req.memberType === "occasional" ? "⏱ Occasional" : "👤 Regular"}
                       </span>
                       <span className="text-xs text-muted-foreground">
@@ -279,14 +325,18 @@ function Members() {
                   </div>
                 </div>
                 <div className="flex gap-2 mt-3">
-                  <button onClick={() => approveMutation.mutate(req._id)}
+                  <button
+                    onClick={() => approveMutation.mutate(req._id)}
                     disabled={approveMutation.isPending}
-                    className="flex-1 h-10 rounded-xl bg-green-500/15 text-green-400 text-sm font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50">
+                    className="flex-1 h-10 rounded-xl bg-green-500/15 text-green-400 text-sm font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
                     <UserCheck className="size-4" /> Approve
                   </button>
-                  <button onClick={() => rejectMutation.mutate(req._id)}
+                  <button
+                    onClick={() => rejectMutation.mutate(req._id)}
                     disabled={rejectMutation.isPending}
-                    className="flex-1 h-10 rounded-xl bg-red-500/15 text-red-400 text-sm font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50">
+                    className="flex-1 h-10 rounded-xl bg-red-500/15 text-red-400 text-sm font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
                     <UserX className="size-4" /> Reject
                   </button>
                 </div>
@@ -296,21 +346,33 @@ function Members() {
         )}
       </AnimatePresence>
 
-      {/* Remove confirmation dialog */}
       <AnimatePresence>
         {removingId && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
-            onClick={() => setRemovingId(null)}>
-            <motion.div initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
+            onClick={() => setRemovingId(null)}
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm bg-card rounded-3xl p-6 border border-border">
+              className="w-full max-w-sm bg-card rounded-3xl p-6 border border-border"
+            >
               <h3 className="font-semibold text-lg">Remove member?</h3>
               <p className="text-sm text-muted-foreground mt-1">Their expenses will remain in history.</p>
               <div className="flex gap-3 mt-5">
-                <button onClick={() => setRemovingId(null)} className="flex-1 h-11 rounded-2xl bg-muted text-sm font-semibold">Cancel</button>
-                <button onClick={() => removeMutation.mutate(removingId)} disabled={removeMutation.isPending}
-                  className="flex-1 h-11 rounded-2xl bg-red-500/20 text-red-400 text-sm font-semibold disabled:opacity-50">
+                <button onClick={() => setRemovingId(null)} className="flex-1 h-11 rounded-2xl bg-muted text-sm font-semibold">
+                  Cancel
+                </button>
+                <button
+                  onClick={() => removeMutation.mutate(removingId)}
+                  disabled={removeMutation.isPending}
+                  className="flex-1 h-11 rounded-2xl bg-red-500/20 text-red-400 text-sm font-semibold disabled:opacity-50"
+                >
                   {removeMutation.isPending ? "Removing…" : "Remove"}
                 </button>
               </div>
@@ -321,4 +383,3 @@ function Members() {
     </AppShell>
   );
 }
-

@@ -57,7 +57,8 @@ export function AddExpenseSheet() {
       amount: number;
       sharedWith: string[];
       guestNames: string[];
-      title?: string;
+      title: string;
+      notes: string;
     }) => expenseApi.create(body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["expenses"] });
@@ -94,13 +95,15 @@ export function AddExpenseSheet() {
 
   const submit = async () => {
     if (!category || !amountNum || totalParticipants === 0) return;
+    if (!title.trim()) return;
     try {
       await createMutation.mutateAsync({
         category,
         amount: amountNum,
         sharedWith: selected,
         guestNames: validGuests,
-        title: title || undefined,
+        title: title.trim(),
+        notes: title.trim(),
       });
       setStep(4);
       setTimeout(() => {
@@ -253,8 +256,11 @@ function StepAmount({
       </div>
 
       <input type="text" value={title} onChange={(e) => onTitleChange(e.target.value)}
-        placeholder="Add a description (optional)"
+        placeholder="Add a description of what you spent on"
+        required
+        aria-label="Expense description"
         className="mt-4 w-full h-10 px-4 rounded-xl bg-muted border border-border text-sm focus:outline-none focus:border-primary text-center" />
+      <p className="mt-1.5 text-center text-xs text-muted-foreground">Required</p>
 
       <div className="mt-3">
         <label className="text-xs text-muted-foreground font-medium block mb-1.5">Who paid?</label>
@@ -286,7 +292,7 @@ function StepAmount({
         ))}
       </div>
 
-      <motion.button whileTap={{ scale: 0.97 }} disabled={!Number(amount)} onClick={onNext}
+      <motion.button whileTap={{ scale: 0.97 }} disabled={!Number(amount) || !title.trim()} onClick={onNext}
         className="mt-5 w-full h-14 rounded-2xl gradient-primary text-primary-foreground font-semibold text-base disabled:opacity-40 shadow-[var(--shadow-glow)]">
         Continue
       </motion.button>

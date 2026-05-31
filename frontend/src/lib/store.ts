@@ -1,4 +1,4 @@
-// In-memory demo store for PG Split (frontend-only)
+// In-memory demo store for Splitit (frontend-only)
 import { create } from "zustand";
 
 export type Category =

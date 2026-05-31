@@ -112,6 +112,6 @@ function buildWhatsAppText(
     ``,
     items,
     ``,
-    `_Powered by PG Splito_`,
+    `_Powered by Splitit_`,
   ].join('\n');
 }

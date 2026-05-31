@@ -6,7 +6,7 @@ const categoryEnum = CATEGORIES as unknown as [string, ...string[]];
 
 export const createExpenseSchema = z.object({
   body: z.object({
-    title:      z.string().max(200).trim().optional(),
+    title:      z.string().trim().min(1, 'Description is required').max(200),
     category:   z.enum(categoryEnum, { errorMap: () => ({ message: 'Invalid category' }) }),
     amount:     z.number({ invalid_type_error: 'Amount must be a number' }).positive().max(1_000_000),
     sharedWith: z.array(objectId).min(0).max(50).default([]),
@@ -14,7 +14,7 @@ export const createExpenseSchema = z.object({
       .array(z.string().trim().min(1).max(100))
       .max(20, 'Maximum 20 guests per expense')
       .default([]),
-    notes:      z.string().max(500).trim().optional(),
+    notes:      z.string().trim().min(1, 'Description is required').max(500),
   }).refine(
     (d) => d.sharedWith.length + d.guestNames.length >= 1,
     { message: 'Expense must have at least 1 participant (member or guest)' },
@@ -24,12 +24,12 @@ export const createExpenseSchema = z.object({
 export const updateExpenseSchema = z.object({
   params: z.object({ id: objectId }),
   body: z.object({
-    title:      z.string().max(200).trim().optional(),
+    title:      z.string().trim().min(1, 'Description is required').max(200).optional(),
     category:   z.enum(categoryEnum).optional(),
     amount:     z.number().positive().max(1_000_000).optional(),
     sharedWith: z.array(objectId).min(0).max(50).optional(),
     guestNames: z.array(z.string().trim().min(1).max(100)).max(20).optional(),
-    notes:      z.string().max(500).trim().optional(),
+    notes:      z.string().trim().min(1, 'Description is required').max(500).optional(),
   }).refine(d => Object.keys(d).length > 0, { message: 'Provide at least one field to update' }),
 });
 

@@ -5,7 +5,7 @@ const options: swaggerJsdoc.Options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'PG Splito API',
+      title: 'Splitit API',
       version: '1.0.0',
       description: 'Expense splitting API for PG residents',
     },

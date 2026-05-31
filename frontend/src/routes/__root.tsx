@@ -15,7 +15,6 @@ import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/lib/theme";
 
 const PUBLIC_ROUTES = ["/login", "/onboarding"];
-// Routes accessible to authenticated users who haven't joined a group yet
 const NO_GROUP_ROUTES = ["/onboarding", "/groups"];
 
 function AuthGuard() {
@@ -25,8 +24,8 @@ function AuthGuard() {
 
   useEffect(() => {
     initialize();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once on mount only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (isLoading) return;
@@ -43,14 +42,14 @@ function AuthGuard() {
     if (isAuthenticated && !user?.groupId && !isPublic && !NO_GROUP_ROUTES.some((r) => pathname.startsWith(r))) {
       navigate({ to: "/onboarding" });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, isLoading, user?.groupId, pathname]);
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center theme-app-bg">
         <div className="flex flex-col items-center gap-3">
-          <div className="size-12 rounded-2xl gradient-primary grid place-items-center text-2xl">🏠</div>
+          <img src="/favicons/android-chrome-192x192.png" alt="Splitit" className="size-12 rounded-2xl shadow" />
           <div className="size-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       </div>
@@ -101,9 +100,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "PG Splito" },
+      { title: "Splitit" },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", href: "/favicons/favicon.ico" },
+      { rel: "icon", href: "/favicons/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { rel: "icon", href: "/favicons/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { rel: "apple-touch-icon", href: "/favicons/apple-touch-icon.png" },
+      { rel: "manifest", href: "/favicons/site.webmanifest" },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,

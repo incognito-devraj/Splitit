@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { QK } from "@/lib/queryKeys";
 
 export const Route = createFileRoute("/reports")({
-  head: () => ({ meta: [{ title: "Reports · PG Split" }] }),
+  head: () => ({ meta: [{ title: "Splitit - Reports" }] }),
   component: Reports,
 });
 

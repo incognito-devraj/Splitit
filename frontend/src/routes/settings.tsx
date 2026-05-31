@@ -8,7 +8,7 @@ import { groupApi } from "@/lib/api/endpoints";
 import { QK } from "@/lib/queryKeys";
 
 export const Route = createFileRoute("/settings")({
-  head: () => ({ meta: [{ title: "Settings · PG Split" }] }),
+  head: () => ({ meta: [{ title: "Splitit - Settings" }] }),
   component: Settings,
 });
 
@@ -137,7 +137,7 @@ function Settings() {
         </button>
       </div>
 
-      <div className="text-center text-xs text-muted-foreground mt-2 pb-8">PG Splito · v1.0</div>
+      <div className="text-center text-xs text-muted-foreground mt-2 pb-8">Splitit · v1.0</div>
     </AppShell>
   );
 }

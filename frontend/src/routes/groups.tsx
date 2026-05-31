@@ -13,7 +13,7 @@ import { useAuth } from "@/lib/auth";
 import { QK } from "@/lib/queryKeys";
 
 export const Route = createFileRoute("/groups")({
-  head: () => ({ meta: [{ title: "Groups · PG Split" }] }),
+  head: () => ({ meta: [{ title: "Splitit - Groups" }] }),
   component: GroupsPage,
 });
 
