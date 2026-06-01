@@ -69,8 +69,7 @@ function Dashboard() {
       {/* Greeting and current group row */}
       <div className="px-4 sm:px-6 pt-0">
         <div className="min-w-0">
-          {/* <p className="text-m text-muted-foreground"> */}
-          <p className="text-m text-muted-foreground animate-in fade-in duration-700 hover:text-foreground transition-colors">
+          <p className="text-m text-muted-foreground">
             {greeting}, {user?.name?.split(" ")[0] ?? "there"}
           </p>
           <div className="-mt-1 flex items-center gap-2 min-w-0">
