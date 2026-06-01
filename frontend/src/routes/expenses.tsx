@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { ExpenseDetailDialog } from "@/components/ExpenseDetailDialog";
 import { CATEGORIES } from "@/lib/store";
-import { expenseApi } from "@/lib/api/endpoints";
+import { ApiExpense, expenseApi } from "@/lib/api/endpoints";
 import { useAuth } from "@/lib/auth";
 import { useSheet } from "@/lib/sheet";
 import { QK } from "@/lib/queryKeys";
@@ -28,6 +29,7 @@ function Expenses() {
   const openSheet = useSheet((s) => s.openSheet);
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("");
+  const [selectedExpense, setSelectedExpense] = useState<ApiExpense | null>(null);
   const activeGroupId = user?.groupId ?? null;
 
   const { data, isLoading, isError, error } = useQuery({
@@ -83,8 +85,8 @@ function Expenses() {
       <div className="px-4 sm:px-6 mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
         <button
           onClick={() => setFilterCat("")}
-          className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-            !filterCat ? "gradient-primary text-primary-foreground border-transparent" : "bg-card border-border text-muted-foreground"
+          className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-all hover:-translate-y-0.5 ${
+            !filterCat ? "gradient-primary text-primary-foreground border-transparent shadow-[var(--shadow-glow)]" : "bg-card border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
           }`}
         >
           All
@@ -93,8 +95,8 @@ function Expenses() {
           <button
             key={c.id}
             onClick={() => setFilterCat(filterCat === c.id ? "" : c.id)}
-            className={`shrink-0 flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-              filterCat === c.id ? "gradient-primary text-primary-foreground border-transparent" : "bg-card border-border text-muted-foreground"
+            className={`shrink-0 flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border transition-all hover:-translate-y-0.5 ${
+              filterCat === c.id ? "gradient-primary text-primary-foreground border-transparent shadow-[var(--shadow-glow)]" : "bg-card border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
             }`}
           >
             {c.emoji} {c.label}
@@ -151,17 +153,21 @@ function Expenses() {
                 {items.map((e, i) => {
                   const cat = CATEGORIES.find((c) => c.id === e.category) ?? CATEGORIES[CATEGORIES.length - 1];
                   return (
-                    <motion.div
+                    <motion.button
                       key={e._id}
+                      type="button"
                       initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.04 }}
-                      className="relative"
+                      whileHover={{ x: 4 }}
+                      whileTap={{ scale: 0.99 }}
+                      onClick={() => setSelectedExpense(e)}
+                      className="group relative w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-2xl"
                     >
                       <div className="absolute -left-[18px] top-4 size-3 rounded-full ring-4 ring-background"
                         style={{ background: cat.tint }} />
-                      <div className="p-4 rounded-2xl bg-card border border-border">
+                      <div className="p-4 rounded-2xl bg-card border border-border transition-all duration-200 hover:border-primary/40 hover:bg-primary/5 hover:shadow-[0_16px_34px_rgba(0,0,0,0.12)]">
                         <div className="flex items-start gap-3">
-                          <div className="size-11 rounded-xl grid place-items-center text-xl shrink-0"
+                          <div className="size-11 rounded-xl grid place-items-center text-xl shrink-0 transition-transform duration-200 group-hover:scale-105"
                             style={{ background: `color-mix(in oklab, ${cat.tint} 22%, transparent)` }}>
                             {cat.emoji}
                           </div>
@@ -187,7 +193,7 @@ function Expenses() {
                           </div>
                         </div>
                       </div>
-                    </motion.div>
+                    </motion.button>
                   );
                 })}
               </div>
@@ -195,6 +201,11 @@ function Expenses() {
           </div>
         ))}
       </div>
+      <ExpenseDetailDialog
+        expense={selectedExpense}
+        open={!!selectedExpense}
+        onClose={() => setSelectedExpense(null)}
+      />
     </AppShell>
   );
 }

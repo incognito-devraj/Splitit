@@ -35,7 +35,7 @@ function SidebarNav() {
   const { pathname } = useLocation();
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 xl:w-72 shrink-0 h-screen sticky top-0 border-r border-border bg-card/40 backdrop-blur-xl">
+    <aside className="hidden lg:flex flex-col w-64 xl:w-60 shrink-0 h-screen sticky top-0 border-r border-border bg-card/40 backdrop-blur-xl">
       <div className="px-6 py-6 border-b border-border">
         <div className="flex items-center gap-3">
           <img src="/favicons/android-chrome-192x192.png" alt="Splitit logo" className="size-10 rounded-2xl shadow" />
@@ -46,7 +46,7 @@ function SidebarNav() {
         </div>
       </div>
 
-      <nav className="flex-1 px-3 space-y-1">
+      <nav className="flex-1 pt-2 px-3 space-y-1">
         {NAV_ITEMS.map((item) => {
           const active = pathname === item.to;
           const Icon = item.icon;
@@ -54,11 +54,11 @@ function SidebarNav() {
             <Link
               key={item.to}
               to={item.to}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-colors font-medium text-sm ${
-                active ? "bg-primary/12 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              className={`group flex items-center gap-3 px-3 py-2.5 rounded-2xl font-medium text-sm transition-all duration-200 hover:translate-x-1 ${
+                active ? "bg-primary/12 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground hover:shadow-[0_10px_24px_rgba(0,0,0,0.08)]"
               }`}
             >
-              <Icon className="size-5 shrink-0" strokeWidth={active ? 2.4 : 2} />
+              <Icon className="size-5 shrink-0 transition-transform duration-200 group-hover:scale-110" strokeWidth={active ? 2.4 : 2} />
               {item.label}
             </Link>
           );
@@ -145,7 +145,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25 }}
-              className="w-full px-4 sm:px-6 pt-0 sm:pt-2 pb-4"
+              className="relative w-full px-4 sm:px-6 pt-10 pb-4"
             >
               <DesktopTopBar />
               {children}
@@ -171,7 +171,7 @@ function DesktopTopBar() {
   });
 
   return (
-    <div className="hidden sm:flex items-center justify-end gap-2 mb-3">
+    <div className="hidden sm:flex absolute right-4 top-0 z-20 items-center justify-end gap-2 sm:right-6">
       <div className="flex items-center gap-2 shrink-0 rounded-full bg-background/55 backdrop-blur-xl border border-border/60 px-2 py-1 shadow-[var(--shadow-card)]">
         <ThemeToggle className="size-9" />
         <Link to="/settings" className="size-9 rounded-full overflow-hidden">
@@ -191,6 +191,7 @@ function DesktopFab({ onClick }: { onClick: () => void }) {
       aria-label="Add expense"
       onClick={onClick}
       whileTap={{ scale: 0.94 }}
+      whileHover={{ y: -4, scale: 1.04 }}
       className="hidden lg:grid fixed bottom-6 left-1/2 -translate-x-1/2 z-40 size-16 rounded-full gradient-primary text-primary-foreground place-items-center shadow-[var(--shadow-float)] animate-pulse-glow"
     >
       <Plus className="size-7" strokeWidth={2.5} />

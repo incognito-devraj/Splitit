@@ -22,6 +22,7 @@ const envSchema = z.object({
 
   // Frontend
   FRONTEND_URL: z.string().default('http://localhost:3000'),
+  CORS_ORIGINS: z.string().optional(),
 
   // Rate Limiting
   RATE_LIMIT_WINDOW_MS: z.string().default('900000'),

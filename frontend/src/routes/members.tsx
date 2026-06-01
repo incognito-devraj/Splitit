@@ -117,7 +117,7 @@ function Members() {
           {group?.inviteCode && (
             <button
               onClick={copyCode}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-card border border-border shrink-0"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-card border border-border shrink-0 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_12px_28px_rgba(0,0,0,0.10)]"
             >
               <span className="font-mono font-bold tracking-widest text-sm">{group.inviteCode}</span>
               {copied ? <Check className="size-3.5 text-green-400" /> : <Copy className="size-3.5 text-muted-foreground" />}
@@ -131,13 +131,13 @@ function Members() {
           <div className="flex rounded-2xl bg-card border border-border p-1">
             <button
               onClick={() => setTab("members")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-semibold transition-all ${tab === "members" ? "gradient-primary text-primary-foreground" : "text-muted-foreground"}`}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-semibold transition-all hover:-translate-y-0.5 ${tab === "members" ? "gradient-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
             >
               <Users className="size-4" /> Members
             </button>
             <button
               onClick={() => setTab("requests")}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-semibold transition-all relative ${tab === "requests" ? "gradient-primary text-primary-foreground" : "text-muted-foreground"}`}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-semibold transition-all relative hover:-translate-y-0.5 ${tab === "requests" ? "gradient-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
             >
               <Clock className="size-4" /> Requests
               {pendingRequests.length > 0 && (
@@ -190,7 +190,8 @@ function Members() {
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.04 }}
-                    className="rounded-3xl bg-card border border-border overflow-hidden"
+                    whileHover={{ y: -3, scale: 1.01 }}
+                    className="rounded-3xl bg-card border border-border overflow-hidden transition-all duration-200 hover:border-primary/30 hover:shadow-[0_16px_34px_rgba(0,0,0,0.12)]"
                   >
                     <div className="p-4 flex items-center gap-3">
                       <div
@@ -260,8 +261,9 @@ function Members() {
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               whileTap={{ scale: 0.97 }}
+                              whileHover={{ y: -1 }}
                               onClick={() => { setSettling(b.userId); setSettleAmt(Math.abs(b.netBalance).toFixed(0)); }}
-                              className="w-full h-9 rounded-xl border border-primary/30 bg-primary/10 text-primary text-sm font-semibold"
+                              className="w-full h-9 rounded-xl border border-primary/30 bg-primary/10 text-primary text-sm font-semibold transition-colors hover:bg-primary/15"
                             >
                               💸 Settle · ₹{Math.abs(b.netBalance).toFixed(0)}
                             </motion.button>
@@ -296,7 +298,8 @@ function Members() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="p-4 rounded-3xl bg-card border border-border"
+                whileHover={{ y: -3, scale: 1.01 }}
+                className="p-4 rounded-3xl bg-card border border-border transition-all duration-200 hover:border-primary/30 hover:shadow-[0_16px_34px_rgba(0,0,0,0.12)]"
               >
                 <div className="flex items-start gap-3">
                   <div className="size-12 rounded-full bg-muted overflow-hidden grid place-items-center shrink-0">
@@ -328,14 +331,14 @@ function Members() {
                   <button
                     onClick={() => approveMutation.mutate(req._id)}
                     disabled={approveMutation.isPending}
-                    className="flex-1 h-10 rounded-xl bg-green-500/15 text-green-400 text-sm font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    className="flex-1 h-10 rounded-xl bg-green-500/15 text-green-400 text-sm font-semibold flex items-center justify-center gap-1.5 transition-all hover:-translate-y-0.5 hover:bg-green-500/20 disabled:opacity-50"
                   >
                     <UserCheck className="size-4" /> Approve
                   </button>
                   <button
                     onClick={() => rejectMutation.mutate(req._id)}
                     disabled={rejectMutation.isPending}
-                    className="flex-1 h-10 rounded-xl bg-red-500/15 text-red-400 text-sm font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    className="flex-1 h-10 rounded-xl bg-red-500/15 text-red-400 text-sm font-semibold flex items-center justify-center gap-1.5 transition-all hover:-translate-y-0.5 hover:bg-red-500/20 disabled:opacity-50"
                   >
                     <UserX className="size-4" /> Reject
                   </button>

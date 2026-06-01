@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+import { type ClientSession, Types } from 'mongoose';
 import { Expense, IExpense, ExpenseCategory } from '../models/Expense.model';
 import { ExpenseAudit } from '../models/ExpenseAudit.model';
 import { GuestParticipant } from '../models/GuestParticipant.model';
@@ -6,13 +6,16 @@ import { User } from '../models/User.model';
 import { AppError } from '../middleware/error.middleware';
 import { paginate } from '../utils/response';
 import { logger } from '../utils/logger';
+import { withMongoTransaction } from '../utils/mongo';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-async function validateMembers(groupId: string, ids: string[]): Promise<Types.ObjectId[]> {
+async function validateMembers(groupId: string, ids: string[], session?: ClientSession): Promise<Types.ObjectId[]> {
   if (!ids.length) return [];
   const gid = new Types.ObjectId(groupId);
-  const members = await User.find({ $or: [{ groupId: gid }, { groupIds: gid }] }).select('_id').lean();
+  const query = User.find({ $or: [{ groupId: gid }, { groupIds: gid }] }).select('_id');
+  if (session) query.session(session);
+  const members = await query.lean();
   const memberSet = new Set(members.map((m) => m._id.toString()));
   const invalid = ids.filter((id) => !memberSet.has(id));
   if (invalid.length) throw new AppError(`Users not in group: ${invalid.join(', ')}`, 400);
@@ -27,6 +30,7 @@ async function resolveGuests(
   groupId: string,
   createdBy: string,
   guestNames: string[],
+  session?: ClientSession,
 ): Promise<Types.ObjectId[]> {
   if (!guestNames.length) return [];
 
@@ -36,11 +40,13 @@ async function resolveGuests(
     if (!name) continue;
 
     // Case-insensitive upsert
-    const guest = await GuestParticipant.findOneAndUpdate(
+    const guestQuery = GuestParticipant.findOneAndUpdate(
       { groupId: new Types.ObjectId(groupId), name: { $regex: `^${name}$`, $options: 'i' } },
       { $setOnInsert: { name, groupId: new Types.ObjectId(groupId), createdBy: new Types.ObjectId(createdBy) } },
       { upsert: true, new: true },
     );
+    if (session) guestQuery.session(session);
+    const guest = await guestQuery;
     ids.push(guest._id);
   }
   return ids;

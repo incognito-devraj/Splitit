@@ -51,6 +51,15 @@ export function AddExpenseSheet() {
     }
   }, [open, presetCategory, members, user]);
 
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
   const createMutation = useMutation({
     mutationFn: (body: {
       category: string;
@@ -120,17 +129,17 @@ export function AddExpenseSheet() {
   return (
     <AnimatePresence>
       {open && (
-        <motion.div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6"
+        <motion.div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4"
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <motion.div className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={closeSheet} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
           <motion.div
             initial={{ opacity: 0, scale: 0.96, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 20 }}
             transition={{ type: "spring", damping: 30, stiffness: 320 }}
-            className="relative z-10 w-full max-w-3xl max-h-[86vh] rounded-3xl border border-border/70 bg-card overflow-hidden flex flex-col shadow-[0_30px_100px_rgba(0,0,0,0.45)]"
+            className="relative z-10 w-full max-w-[min(92vw,640px)] max-h-[calc(100dvh-2rem)] rounded-3xl border border-border/70 bg-card overflow-hidden flex flex-col shadow-[0_30px_100px_rgba(0,0,0,0.45)]"
           >
             {/* Handle + Header */}
-            <div className="flex items-center justify-between px-5 pt-3 pb-2">
+            <div className="flex items-center justify-between px-5 pt-2.5 pb-2">
               <div className="mx-auto absolute left-1/2 -translate-x-1/2 top-2 h-1.5 w-10 rounded-full bg-muted" />
               <button onClick={step === 0 || step === 4 ? closeSheet : back}
                 className="size-9 grid place-items-center rounded-full bg-muted text-foreground" aria-label="Back">
@@ -200,7 +209,7 @@ export function AddExpenseSheet() {
 function StepWrap({ children }: { children: React.ReactNode }) {
   return (
     <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.22 }} className="px-5 py-5 sm:px-6 sm:py-6">
+      exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.22 }} className="px-4 py-3.5 sm:px-5 sm:py-4">
       {children}
     </motion.div>
   );
@@ -211,14 +220,15 @@ function StepWrap({ children }: { children: React.ReactNode }) {
 function StepCategory({ onPick }: { onPick: (c: Category) => void }) {
   return (
     <StepWrap>
-      <h2 className="text-2xl font-semibold tracking-tight">What did you spend on?</h2>
+      <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">What did you spend on?</h2>
       <p className="text-sm text-muted-foreground mt-1">Pick a category to start</p>
       <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-3">
         {CATEGORIES.map((c, i) => (
           <motion.button key={c.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.03 }} whileTap={{ scale: 0.94 }} onClick={() => onPick(c.id)}
-            className="aspect-square rounded-2xl bg-surface-elevated border border-border flex flex-col items-center justify-center gap-1.5 active:bg-muted">
-            <span className="text-3xl">{c.emoji}</span>
+            transition={{ delay: i * 0.03 }} whileTap={{ scale: 0.94 }} whileHover={{ y: -4, scale: 1.02 }}
+            onClick={() => onPick(c.id)}
+            className="group aspect-square rounded-2xl bg-surface-elevated border border-border flex flex-col items-center justify-center gap-1.5 active:bg-muted transition-all duration-200 hover:border-primary/30 hover:shadow-[0_12px_30px_rgba(0,0,0,0.08)]">
+            <span className="text-3xl transition-transform duration-200 group-hover:scale-110 group-hover:rotate-6">{c.emoji}</span>
             <span className="text-xs font-medium">{c.label}</span>
           </motion.button>
         ))}
@@ -249,26 +259,26 @@ function StepAmount({
         <span className="text-xl">{cat.emoji}</span><span>{cat.label}</span>
       </div>
 
-      <div className="mt-5 flex items-baseline justify-center gap-1">
-        <span className="text-3xl font-medium text-muted-foreground">₹</span>
+      <div className="mt-2 sm:mt-3 flex items-baseline justify-center gap-1">
+        <span className="text-2xl font-medium text-muted-foreground">₹</span>
         <motion.span key={display} initial={{ scale: 0.96, opacity: 0.6 }} animate={{ scale: 1, opacity: 1 }}
-          className="text-6xl font-semibold tabular tracking-tight">{display}</motion.span>
+          className="text-4xl sm:text-5xl font-semibold tabular tracking-tight">{display}</motion.span>
       </div>
 
       <input type="text" value={title} onChange={(e) => onTitleChange(e.target.value)}
         placeholder="Add a description of what you spent on"
         required
         aria-label="Expense description"
-        className="mt-4 w-full h-10 px-4 rounded-xl bg-muted border border-border text-sm focus:outline-none focus:border-primary text-center" />
-      <p className="mt-1.5 text-center text-xs text-muted-foreground">Required</p>
+        className="mt-2.5 w-full h-9 px-4 rounded-xl bg-muted border border-border text-sm focus:outline-none focus:border-primary text-center" />
+      <p className="mt-1 text-center text-xs text-muted-foreground">Required</p>
 
-      <div className="mt-3">
+      <div className="mt-2">
         <label className="text-xs text-muted-foreground font-medium block mb-1.5">Who paid?</label>
         <div className="relative">
           <select
             value={paidById}
             onChange={(e) => onPaidByChange(e.target.value)}
-            className="w-full h-11 pl-4 pr-10 rounded-xl bg-card border border-border text-sm font-medium appearance-none focus:outline-none focus:border-primary cursor-pointer"
+            className="w-full h-10 pl-4 pr-10 rounded-xl bg-card border border-border text-sm font-medium appearance-none focus:outline-none focus:border-primary cursor-pointer"
           >
             {members.map((m) => (
               <option key={m._id} value={m._id}>{m.name}</option>
@@ -283,17 +293,17 @@ function StepAmount({
         )}
       </div>
 
-      <div className="mt-5 grid grid-cols-3 gap-2">
+      <div className="mt-3 grid grid-cols-3 gap-2">
         {keys.map((k) => (
           <motion.button key={k} whileTap={{ scale: 0.9 }} onClick={() => onKey(k)}
-            className="h-14 rounded-2xl bg-surface-elevated text-2xl font-medium active:bg-muted grid place-items-center">
+            className="h-11 sm:h-12 rounded-2xl bg-surface-elevated text-xl font-medium active:bg-muted grid place-items-center">
             {k === "back" ? <Delete className="size-5" /> : k}
           </motion.button>
         ))}
       </div>
 
       <motion.button whileTap={{ scale: 0.97 }} disabled={!Number(amount) || !title.trim()} onClick={onNext}
-        className="mt-5 w-full h-14 rounded-2xl gradient-primary text-primary-foreground font-semibold text-base disabled:opacity-40 shadow-[var(--shadow-glow)]">
+        className="mt-3 w-full h-11 sm:h-12 rounded-2xl gradient-primary text-primary-foreground font-semibold text-base disabled:opacity-40 shadow-[var(--shadow-glow)]">
         Continue
       </motion.button>
     </StepWrap>
@@ -323,7 +333,7 @@ function StepMembers({
 
   return (
     <StepWrap>
-      <h2 className="text-2xl font-semibold tracking-tight">Split with</h2>
+      <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">Split with</h2>
       <p className="text-sm text-muted-foreground mt-1">
         {selected.length} member{selected.length !== 1 ? "s" : ""}
         {validGuests.length > 0 && ` + ${validGuests.length} guest${validGuests.length !== 1 ? "s" : ""}`}
@@ -331,7 +341,7 @@ function StepMembers({
       </p>
 
       {/* Members */}
-      <div className="mt-5 space-y-2">
+      <div className="mt-4 sm:mt-5 space-y-2">
         {members.map((m) => {
           const active = selected.includes(m._id);
           return (
@@ -354,7 +364,7 @@ function StepMembers({
       </div>
 
       {/* Guests section */}
-      <div className="mt-5">
+      <div className="mt-4 sm:mt-5">
         <div className="flex items-center justify-between mb-2">
           <div>
             <p className="text-sm font-semibold">Guests</p>
@@ -413,7 +423,7 @@ function StepMembers({
       </div>
 
       <motion.button whileTap={{ scale: 0.97 }} disabled={total === 0} onClick={onNext}
-        className="mt-6 w-full h-14 rounded-2xl gradient-primary text-primary-foreground font-semibold disabled:opacity-40">
+        className="mt-4 sm:mt-6 w-full h-12 sm:h-14 rounded-2xl gradient-primary text-primary-foreground font-semibold disabled:opacity-40">
         Continue · {total} participant{total !== 1 ? "s" : ""}
       </motion.button>
     </StepWrap>
@@ -433,8 +443,8 @@ function StepPreview({
   const total = memberCount + guestCount;
   return (
     <StepWrap>
-      <h2 className="text-2xl font-semibold tracking-tight">Looks good?</h2>
-      <div className="mt-6 rounded-3xl gradient-balance p-6 text-white shadow-[var(--shadow-card)]">
+      <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">Looks good?</h2>
+      <div className="mt-4 sm:mt-6 rounded-3xl gradient-balance p-5 sm:p-6 text-white shadow-[var(--shadow-card)]">
         <div className="flex items-center gap-2 text-white/80 text-sm">
           <span className="text-xl">{cat.emoji}</span> {cat.label}
         </div>
@@ -475,18 +485,42 @@ function StepSuccess({ amount }: { amount: number }) {
   return (
     <motion.div key="success" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
       className="h-full flex flex-col items-center justify-center px-5 py-10">
-      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-        transition={{ type: "spring", stiffness: 260, damping: 18 }}
-        className="size-24 rounded-full gradient-success grid place-items-center shadow-[var(--shadow-glow)]">
-        <motion.svg viewBox="0 0 24 24" className="size-12 text-white">
-          <motion.path d="M5 12 L10 17 L19 7" fill="none" stroke="currentColor" strokeWidth={3}
-            strokeLinecap="round" strokeLinejoin="round"
-            initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.4, delay: 0.15 }} />
-        </motion.svg>
+      <motion.div
+        initial={{ scale: 0.6, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 240, damping: 14 }}
+        className="relative size-28 rounded-full gradient-success grid place-items-center shadow-[var(--shadow-glow)]"
+      >
+        <motion.div
+          className="absolute inset-3 rounded-full bg-white/25"
+          initial={{ scale: 0.6, opacity: 0 }}
+          animate={{ scale: [0.75, 1, 0.98], opacity: 1 }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
+        />
+        <motion.div
+          initial={{ scale: 0, rotate: -20 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", stiffness: 320, damping: 16, delay: 0.08 }}
+          className="relative size-16 rounded-full bg-white grid place-items-center shadow-[0_8px_24px_rgba(0,0,0,0.16)]"
+        >
+          <motion.svg viewBox="0 0 24 24" className="size-10 text-emerald-500">
+            <motion.path
+              d="M5 12 L10 17 L19 7"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={3.2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{ duration: 0.35, delay: 0.22 }}
+            />
+          </motion.svg>
+        </motion.div>
       </motion.div>
-      <motion.h3 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+      <motion.h3 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
         className="mt-6 text-2xl font-semibold">Expense added!</motion.h3>
-      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
+      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.42 }}
         className="text-muted-foreground mt-1">
         ₹{amount.toLocaleString("en-IN")} split with your PG
       </motion.p>

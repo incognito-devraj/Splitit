@@ -1,10 +1,11 @@
-import { Types } from 'mongoose';
+import { type ClientSession, Types } from 'mongoose';
 import { Group, IGroup } from '../models/Group.model';
 import { User, IUser } from '../models/User.model';
 import { JoinRequest } from '../models/JoinRequest.model';
 import { AppError } from '../middleware/error.middleware';
 import { uniqueInviteCode } from '../utils/inviteCode';
 import { logger } from '../utils/logger';
+import { withMongoTransaction } from '../utils/mongo';
 
 type GroupSummary = {
   _id: string;
@@ -18,19 +19,19 @@ type GroupSummary = {
   updatedAt: Date;
 };
 
-async function ensureMembershipSnapshot(user: IUser) {
+async function ensureMembershipSnapshot(user: IUser, session?: ClientSession) {
   if (!user.groupIds.length && user.groupId) {
     user.groupIds = [user.groupId];
-    await user.save();
+    await user.save({ session });
   }
 }
 
-async function setActiveGroup(user: IUser, groupId: Types.ObjectId | null) {
+async function setActiveGroup(user: IUser, groupId: Types.ObjectId | null, session?: ClientSession) {
   user.groupId = groupId;
   if (groupId && !user.groupIds.some((existing) => existing.equals(groupId))) {
     user.groupIds.push(groupId);
   }
-  await user.save();
+  await user.save({ session });
 }
 
 function uniqueGroupIds(user: IUser): Types.ObjectId[] {
@@ -50,51 +51,61 @@ function uniqueGroupIds(user: IUser): Types.ObjectId[] {
 // ─── Create Group ─────────────────────────────────────────────────────────────
 
 export async function createGroup(userId: string, name: string, description = '') {
-  const user = await User.findById(userId);
-  if (!user) throw new AppError('User not found', 404);
-  await ensureMembershipSnapshot(user);
+  return withMongoTransaction('createGroup', async (session) => {
+    const user = await User.findById(userId).session(session ?? null);
+    if (!user) throw new AppError('User not found', 404);
+    await ensureMembershipSnapshot(user, session);
 
-  const inviteCode = await uniqueInviteCode();
-  const adminId = new Types.ObjectId(userId);
+    const inviteCode = await uniqueInviteCode();
+    const adminId = new Types.ObjectId(userId);
 
-  const group = await Group.create({ name, description, inviteCode, adminId, members: [adminId] });
+    const [group] = await Group.create([{
+      name,
+      description,
+      inviteCode,
+      adminId,
+      members: [adminId],
+    }], { session });
 
-  if (!user.groupIds.some((id) => id.equals(group._id))) {
-    user.groupIds.push(group._id);
-  }
-  user.role = 'admin';
-  await setActiveGroup(user, group._id);
+    if (!user.groupIds.some((id) => id.equals(group._id))) {
+      user.groupIds.push(group._id);
+    }
+    user.role = 'admin';
+    await setActiveGroup(user, group._id, session);
 
-  logger.info(`Group created: "${name}" by ${user.email}`);
-  return { group, user };
+    logger.info(`Group created: "${name}" by ${user.email}`);
+    return { group, user };
+  });
 }
 
 // ─── Join Group ───────────────────────────────────────────────────────────────
 
 export async function joinGroup(userId: string, inviteCode: string) {
-  const user = await User.findById(userId);
-  if (!user) throw new AppError('User not found', 404);
-  await ensureMembershipSnapshot(user);
+  return withMongoTransaction('joinGroup', async (session) => {
+    const user = await User.findById(userId).session(session ?? null);
+    if (!user) throw new AppError('User not found', 404);
+    await ensureMembershipSnapshot(user, session);
 
-  const group = await Group.findOne({ inviteCode: inviteCode.toUpperCase() });
-  if (!group) throw new AppError('Invalid invite code', 400);
+    const group = await Group.findOne({ inviteCode: inviteCode.toUpperCase() }).session(session ?? null);
+    if (!group) throw new AppError('Invalid invite code', 400);
 
-  if (user.groupIds.some((existing) => existing.equals(group._id))) {
-    throw new AppError('You are already a member of this group', 409);
-  }
+    if (user.groupIds.some((existing) => existing.equals(group._id))) {
+      throw new AppError('You are already a member of this group', 409);
+    }
 
-  const uid = new Types.ObjectId(userId);
-  if (!group.members.some((m) => m.equals(uid))) {
-    group.members.push(uid);
-    await group.save();
-  }
+    const uid = new Types.ObjectId(userId);
+    if (!group.members.some((m) => m.equals(uid))) {
+      group.members.push(uid);
+      await group.save({ session });
+    }
 
-  user.groupIds.push(group._id);
-  user.role = 'member';
-  await setActiveGroup(user, group._id);
+    user.groupIds.push(group._id);
+    user.role = 'member';
+    await setActiveGroup(user, group._id, session);
 
-  logger.info(`${user.email} joined group "${group.name}"`);
-  return { group, user };
+    logger.info(`${user.email} joined group "${group.name}"`);
+    return { group, user };
+  });
 }
 
 // ─── Current / memberships ────────────────────────────────────────────────────
@@ -166,97 +177,105 @@ export async function getMembers(groupId: string) {
 }
 
 export async function removeMember(adminId: string, targetUserId: string) {
-  const admin = await User.findById(adminId);
-  if (!admin?.groupId) throw new AppError('Not in a group', 403);
+  return withMongoTransaction('removeMember', async (session) => {
+    const admin = await User.findById(adminId).session(session ?? null);
+    if (!admin?.groupId) throw new AppError('Not in a group', 403);
 
-  const group = await Group.findById(admin.groupId);
-  if (!group) throw new AppError('Group not found', 404);
+    const group = await Group.findById(admin.groupId).session(session ?? null);
+    if (!group) throw new AppError('Group not found', 404);
 
-  if (group.adminId.toString() === targetUserId) {
-    throw new AppError('Cannot remove the group admin', 403);
-  }
+    if (group.adminId.toString() === targetUserId) {
+      throw new AppError('Cannot remove the group admin', 403);
+    }
 
-  const target = await User.findById(targetUserId);
-  if (!target) throw new AppError('User not found', 404);
+    const target = await User.findById(targetUserId).session(session ?? null);
+    if (!target) throw new AppError('User not found', 404);
 
-  const targetMembership = target.groupIds.some((id) => id.equals(group._id)) || target.groupId?.toString() === group._id.toString();
-  if (!targetMembership) {
-    throw new AppError('User is not in your group', 404);
-  }
+    const targetMembership = target.groupIds.some((id) => id.equals(group._id)) || target.groupId?.toString() === group._id.toString();
+    if (!targetMembership) {
+      throw new AppError('User is not in your group', 404);
+    }
 
-  group.members = group.members.filter((m) => !m.equals(new Types.ObjectId(targetUserId)));
-  await group.save();
+    group.members = group.members.filter((m) => !m.equals(new Types.ObjectId(targetUserId)));
+    await group.save({ session });
 
-  target.groupIds = target.groupIds.filter((id) => !id.equals(group._id));
-  if (target.groupId?.toString() === group._id.toString()) {
-    target.groupId = target.groupIds[0] ?? null;
-  }
-  await target.save();
+    target.groupIds = target.groupIds.filter((id) => !id.equals(group._id));
+    if (target.groupId?.toString() === group._id.toString()) {
+      target.groupId = target.groupIds[0] ?? null;
+    }
+    await target.save({ session });
 
-  logger.info(`Admin removed ${target.email} from group "${group.name}"`);
+    logger.info(`Admin removed ${target.email} from group "${group.name}"`);
+  });
 }
 
 export async function transferAdmin(currentAdminId: string, newAdminId: string) {
-  const admin = await User.findById(currentAdminId);
-  if (!admin?.groupId) throw new AppError('Not in a group', 403);
+  return withMongoTransaction('transferAdmin', async (session) => {
+    const admin = await User.findById(currentAdminId).session(session ?? null);
+    if (!admin?.groupId) throw new AppError('Not in a group', 403);
 
-  const group = await Group.findById(admin.groupId);
-  if (!group) throw new AppError('Group not found', 404);
-  if (group.adminId.toString() !== currentAdminId) throw new AppError('Not the admin', 403);
+    const group = await Group.findById(admin.groupId).session(session ?? null);
+    if (!group) throw new AppError('Group not found', 404);
+    if (group.adminId.toString() !== currentAdminId) throw new AppError('Not the admin', 403);
 
-  const newAdmin = await User.findById(newAdminId);
-  if (!newAdmin) throw new AppError('Target user not found', 404);
-  const isMember = newAdmin.groupIds.some((id) => id.equals(group._id)) || newAdmin.groupId?.toString() === group._id.toString();
-  if (!isMember) {
-    throw new AppError('Target user is not in your group', 404);
-  }
+    const newAdmin = await User.findById(newAdminId).session(session ?? null);
+    if (!newAdmin) throw new AppError('Target user not found', 404);
+    const isMember = newAdmin.groupIds.some((id) => id.equals(group._id)) || newAdmin.groupId?.toString() === group._id.toString();
+    if (!isMember) {
+      throw new AppError('Target user is not in your group', 404);
+    }
 
-  group.adminId = new Types.ObjectId(newAdminId);
-  await group.save();
+    group.adminId = new Types.ObjectId(newAdminId);
+    await group.save({ session });
 
-  admin.role = 'member';
-  await admin.save();
+    admin.role = 'member';
+    await admin.save({ session });
 
-  newAdmin.role = 'admin';
-  await newAdmin.save();
+    newAdmin.role = 'admin';
+    await newAdmin.save({ session });
 
-  logger.info(`Admin transferred from ${admin.email} to ${newAdmin.email}`);
-  return group;
+    logger.info(`Admin transferred from ${admin.email} to ${newAdmin.email}`);
+    return group;
+  });
 }
 
 export async function leaveGroup(userId: string) {
-  const user = await User.findById(userId);
-  if (!user?.groupId) throw new AppError('You are not in a group', 403);
+  return withMongoTransaction('leaveGroup', async (session) => {
+    const user = await User.findById(userId).session(session ?? null);
+    if (!user?.groupId) throw new AppError('You are not in a group', 403);
 
-  const group = await Group.findById(user.groupId);
-  if (!group) throw new AppError('Group not found', 404);
+    const group = await Group.findById(user.groupId).session(session ?? null);
+    if (!group) throw new AppError('Group not found', 404);
 
-  if (group.adminId.toString() === userId) {
-    throw new AppError('Admin cannot leave. Transfer admin role first.', 403);
-  }
+    if (group.adminId.toString() === userId) {
+      throw new AppError('Admin cannot leave. Transfer admin role first.', 403);
+    }
 
-  group.members = group.members.filter((m) => !m.equals(new Types.ObjectId(userId)));
-  await group.save();
+    group.members = group.members.filter((m) => !m.equals(new Types.ObjectId(userId)));
+    await group.save({ session });
 
-  user.groupIds = user.groupIds.filter((id) => !id.equals(group._id));
-  user.groupId = user.groupIds[0] ?? null;
-  await user.save();
+    user.groupIds = user.groupIds.filter((id) => !id.equals(group._id));
+    user.groupId = user.groupIds[0] ?? null;
+    await user.save({ session });
 
-  logger.info(`${user.email} left group "${group.name}"`);
+    logger.info(`${user.email} left group "${group.name}"`);
+  });
 }
 
 export async function regenerateInviteCode(adminId: string) {
-  const admin = await User.findById(adminId);
-  if (!admin?.groupId) throw new AppError('Not in a group', 403);
+  return withMongoTransaction('regenerateInviteCode', async (session) => {
+    const admin = await User.findById(adminId).session(session ?? null);
+    if (!admin?.groupId) throw new AppError('Not in a group', 403);
 
-  const group = await Group.findById(admin.groupId);
-  if (!group) throw new AppError('Group not found', 404);
-  if (group.adminId.toString() !== adminId) throw new AppError('Admin only', 403);
+    const group = await Group.findById(admin.groupId).session(session ?? null);
+    if (!group) throw new AppError('Group not found', 404);
+    if (group.adminId.toString() !== adminId) throw new AppError('Admin only', 403);
 
-  group.inviteCode = await uniqueInviteCode();
-  await group.save();
+    group.inviteCode = await uniqueInviteCode();
+    await group.save({ session });
 
-  return group.inviteCode;
+    return group.inviteCode;
+  });
 }
 
 // ─── Discovery / settings ────────────────────────────────────────────────────

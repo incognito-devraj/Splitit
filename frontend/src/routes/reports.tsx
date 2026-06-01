@@ -48,7 +48,8 @@ function Reports() {
       {/* Total card */}
       <div className="px-4 sm:px-6 mt-5">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-3xl p-5 bg-card border border-border">
+          whileHover={{ y: -3, scale: 1.01 }}
+          className="rounded-3xl p-5 bg-card border border-border transition-all hover:border-primary/30 hover:shadow-[0_16px_34px_rgba(0,0,0,0.12)]">
           {isLoading ? (
             <div className="space-y-2">
               <div className="h-4 w-24 bg-muted rounded animate-pulse" />
@@ -70,8 +71,8 @@ function Reports() {
 
       {/* Full Report button */}
       <div className="px-4 sm:px-6 mt-4">
-        <motion.button whileTap={{ scale: 0.97 }} onClick={() => setShowFull(true)}
-          className="w-full h-12 rounded-2xl border border-primary/30 bg-primary/10 text-primary font-semibold flex items-center justify-center gap-2">
+        <motion.button whileTap={{ scale: 0.97 }} whileHover={{ y: -2 }} onClick={() => setShowFull(true)}
+          className="w-full h-12 rounded-2xl border border-primary/30 bg-primary/10 text-primary font-semibold flex items-center justify-center gap-2 transition-colors hover:bg-primary/15">
           <FileText className="size-4" /> Generate Full Report
         </motion.button>
       </div>
@@ -88,7 +89,7 @@ function Reports() {
             const pct = (total / max) * 100;
             return (
               <motion.div key={category} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.05 }} className="p-3 rounded-2xl bg-card border border-border">
+                transition={{ delay: i * 0.05 }} whileHover={{ x: 3, scale: 1.01 }} className="p-3 rounded-2xl bg-card border border-border transition-all hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_12px_28px_rgba(0,0,0,0.10)]">
                 <div className="flex items-center gap-3">
                   <div className="size-10 rounded-xl grid place-items-center text-lg"
                     style={{ background: `color-mix(in oklab, ${cat.tint} 22%, transparent)` }}>
@@ -116,7 +117,8 @@ function Reports() {
       <div className="px-4 sm:px-6 mt-6 pb-4">
         <h2 className="text-base font-semibold">Who owes what</h2>
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-          className="mt-3 rounded-3xl p-5 bg-card border border-border">
+          whileHover={{ y: -3, scale: 1.01 }}
+          className="mt-3 rounded-3xl p-5 bg-card border border-border transition-all hover:border-primary/30 hover:shadow-[0_16px_34px_rgba(0,0,0,0.12)]">
           <div className="text-xs uppercase tracking-wider text-muted-foreground mb-3">📌 Summary</div>
           <div className="space-y-2">
             {(summary?.summary ?? []).map((s) => (
@@ -131,7 +133,7 @@ function Reports() {
               <p className="text-sm text-muted-foreground text-center py-2">✅ All settled up!</p>
             )}
           </div>
-          <motion.button whileTap={{ scale: 0.97 }} onClick={shareWhatsApp}
+          <motion.button whileTap={{ scale: 0.97 }} whileHover={{ y: -2 }} onClick={shareWhatsApp}
             className="mt-5 w-full h-12 rounded-2xl gradient-primary text-primary-foreground font-semibold flex items-center justify-center gap-2">
             <Share2 className="size-4" /> Share to WhatsApp
           </motion.button>

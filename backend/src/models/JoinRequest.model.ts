@@ -37,7 +37,13 @@ const joinRequestSchema = new Schema<IJoinRequest>(
 
 joinRequestSchema.index({ groupId: 1, status: 1 });
 joinRequestSchema.index({ userId: 1 });
-// Prevent duplicate pending requests
-joinRequestSchema.index({ groupId: 1, userId: 1, status: 1 });
+// Prevent duplicate pending requests at the database level.
+joinRequestSchema.index(
+  { groupId: 1, userId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: 'pending' },
+  },
+);
 
 export const JoinRequest = mongoose.model<IJoinRequest>('JoinRequest', joinRequestSchema);

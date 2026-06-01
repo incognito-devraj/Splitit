@@ -67,9 +67,10 @@ function Dashboard() {
   return (
     <AppShell>
       {/* Greeting and current group row */}
-      <div className="px-4 sm:px-6 pt-4 sm:pt-3">
+      <div className="px-4 sm:px-6 pt-0">
         <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">
+          {/* <p className="text-m text-muted-foreground"> */}
+          <p className="text-m text-muted-foreground animate-in fade-in duration-700 hover:text-foreground transition-colors">
             {greeting}, {user?.name?.split(" ")[0] ?? "there"}
           </p>
           <div className="-mt-1 flex items-center gap-2 min-w-0">
@@ -92,7 +93,9 @@ function Dashboard() {
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative overflow-hidden rounded-3xl p-5 sm:p-6 gradient-balance text-white shadow-[var(--shadow-card)]"
+            whileHover={{ y: -3, scale: 1.01 }}
+            transition={{ type: "spring", stiffness: 260, damping: 24 }}
+            className="relative overflow-hidden rounded-3xl p-5 sm:p-6 gradient-balance text-white shadow-[var(--shadow-card)] transition-shadow duration-200 hover:shadow-[0_24px_60px_rgba(0,128,170,0.28)]"
           >
             <div className="absolute -top-16 -right-12 size-48 rounded-full bg-white/15 blur-2xl" />
             <div className="relative">
@@ -110,22 +113,30 @@ function Dashboard() {
                 </>
               )}
               <div className="mt-5 grid grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-white/15 backdrop-blur p-3 text-white shadow-[0_10px_30px_rgba(0,0,0,0.28)]">
+                <motion.div
+                  whileHover={{ y: -2, scale: 1.03 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 22 }}
+                  className="group rounded-2xl bg-white/15 backdrop-blur p-3 text-white shadow-[0_10px_30px_rgba(0,0,0,0.28)] transition-colors duration-200 hover:bg-white/22"
+                >
                   <div className="flex items-center gap-1.5 text-white text-xs">
-                    <ArrowDownLeft className="size-3.5" /> To collect
+                    <ArrowDownLeft className="size-3.5 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:-translate-x-0.5" /> To collect
                   </div>
                   <div className="mt-1 text-lg sm:text-xl font-semibold tabular text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]">
                     ₹{personalReceivable.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                   </div>
-                </div>
-                <div className="rounded-2xl bg-white/15 backdrop-blur p-3 text-white shadow-[0_10px_30px_rgba(0,0,0,0.28)]">
+                </motion.div>
+                <motion.div
+                  whileHover={{ y: -2, scale: 1.03 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 22 }}
+                  className="group rounded-2xl bg-white/15 backdrop-blur p-3 text-white shadow-[0_10px_30px_rgba(0,0,0,0.28)] transition-colors duration-200 hover:bg-white/22"
+                >
                   <div className="flex items-center gap-1.5 text-white text-xs">
-                    <ArrowUpRight className="size-3.5" /> To pay
+                    <ArrowUpRight className="size-3.5 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" /> To pay
                   </div>
                   <div className="mt-1 text-lg sm:text-xl font-semibold tabular text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.75)]">
                     ₹{toPayAmount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                   </div>
-                </div>
+                </motion.div>
               </div>
             </div>
           </motion.div>
@@ -144,16 +155,17 @@ function Dashboard() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.03 }}
                   whileTap={{ scale: 0.9 }}
+                  whileHover={{ y: -4 }}
                   onClick={() => openSheet(c.id)}
-                  className="flex flex-col items-center gap-1"
+                  className="group flex flex-col items-center gap-1"
                 >
                   <div
-                    className="size-12 sm:size-14 rounded-2xl grid place-items-center text-xl sm:text-2xl"
+                    className="size-12 sm:size-14 rounded-2xl grid place-items-center text-xl sm:text-2xl transition-all duration-200 group-hover:scale-110 group-hover:-rotate-3 group-hover:shadow-[0_14px_30px_rgba(0,0,0,0.14)]"
                     style={{ background: `color-mix(in oklab, ${c.tint} 22%, transparent)` }}
                   >
                     {c.emoji}
                   </div>
-                  <span className="text-[10px] sm:text-[11px] text-muted-foreground">{c.label}</span>
+                  <span className="text-[10px] sm:text-[11px] text-muted-foreground transition-colors duration-200 group-hover:text-foreground">{c.label}</span>
                 </motion.button>
               ))}
             </div>
@@ -173,7 +185,12 @@ function Dashboard() {
                 const positive = b.netBalance >= 0;
                 const settled = Math.abs(b.netBalance) < 0.5;
                 return (
-                  <div key={b.userId} className="flex items-center gap-3 p-3 rounded-2xl bg-card border border-border">
+                  <motion.div
+                    key={b.userId}
+                    whileHover={{ x: 3, scale: 1.01 }}
+                    transition={{ type: "spring", stiffness: 320, damping: 24 }}
+                    className="flex items-center gap-3 p-3 rounded-2xl bg-card border border-border transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_12px_28px_rgba(0,0,0,0.10)]"
+                  >
                     <div className="size-8 rounded-full bg-muted overflow-hidden grid place-items-center text-sm shrink-0">
                       {b.avatar ? <img src={b.avatar} alt={b.name} className="size-full object-cover" /> : "👤"}
                     </div>
@@ -191,7 +208,7 @@ function Dashboard() {
                     >
                       {settled ? "Settled" : `${positive ? "+" : "−"}₹${Math.abs(b.netBalance).toFixed(0)}`}
                     </span>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>

@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { motion } from "framer-motion";
 import { ChevronRight, Bell, Moon, HelpCircle, Shield, LogOut, Copy, Check, RefreshCw, Users } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -58,7 +59,7 @@ function Settings() {
 
       {/* Profile card */}
       <div className="px-4 sm:px-6 mt-6">
-        <div className="p-5 rounded-3xl gradient-balance text-white shadow-[var(--shadow-card)] flex items-center gap-4">
+        <motion.div whileHover={{ y: -3, scale: 1.01 }} className="p-5 rounded-3xl gradient-balance text-white shadow-[var(--shadow-card)] flex items-center gap-4 transition-shadow hover:shadow-[0_24px_60px_rgba(0,128,170,0.28)]">
           <div className="size-16 rounded-full bg-white/25 overflow-hidden grid place-items-center shrink-0">
             {user?.avatar
               ? <img src={user.avatar} alt={user.name} className="size-full object-cover" />
@@ -71,7 +72,7 @@ function Settings() {
             </div>
             <div className="text-xs text-white/60 mt-0.5 truncate">{user?.email}</div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Group section */}
@@ -79,7 +80,7 @@ function Settings() {
         <div className="px-4 sm:px-6 mt-4 space-y-2">
           {/* Members link */}
           <Link to="/members"
-            className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border">
+            className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border transition-all hover:translate-x-1 hover:border-primary/30 hover:bg-primary/5 hover:shadow-[0_12px_28px_rgba(0,0,0,0.10)]">
             <div className="size-10 rounded-xl bg-muted grid place-items-center">
               <Users className="size-4" />
             </div>
@@ -93,16 +94,16 @@ function Settings() {
           </Link>
 
           {/* Invite code */}
-          <div className="p-4 rounded-2xl bg-card border border-border">
+          <div className="p-4 rounded-2xl bg-card border border-border transition-all hover:border-primary/30 hover:shadow-[0_12px_28px_rgba(0,0,0,0.10)]">
             <div className="text-xs text-muted-foreground mb-2">Group Invite Code</div>
             <div className="flex items-center gap-3">
               <div className="flex-1 font-mono font-bold tracking-[0.25em] text-xl">{group.inviteCode}</div>
-              <button onClick={copyCode} className="size-9 rounded-xl bg-muted grid place-items-center">
+              <button onClick={copyCode} className="size-9 rounded-xl bg-muted grid place-items-center transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary">
                 {copied ? <Check className="size-4 text-green-400" /> : <Copy className="size-4" />}
               </button>
               {user?.role === "admin" && (
                 <button onClick={() => regenMutation.mutate()} disabled={regenMutation.isPending}
-                  className="size-9 rounded-xl bg-muted grid place-items-center" title="Regenerate code">
+                  className="size-9 rounded-xl bg-muted grid place-items-center transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary" title="Regenerate code">
                   <RefreshCw className={`size-4 ${regenMutation.isPending ? "animate-spin" : ""}`} />
                 </button>
               )}
@@ -117,8 +118,8 @@ function Settings() {
           {rows.map((r) => {
             const Icon = r.icon;
             return (
-              <button key={r.label} className="w-full flex items-center gap-3 p-4 active:bg-muted transition-colors">
-                <div className="size-10 rounded-xl bg-muted grid place-items-center">
+              <button key={r.label} className="group w-full flex items-center gap-3 p-4 active:bg-muted transition-all hover:bg-primary/5 hover:translate-x-1">
+                <div className="size-10 rounded-xl bg-muted grid place-items-center transition-colors group-hover:bg-primary/10 group-hover:text-primary">
                   <Icon className="size-4" />
                 </div>
                 <span className="flex-1 text-left font-medium">{r.label}</span>
@@ -132,7 +133,7 @@ function Settings() {
       {/* Logout */}
       <div className="px-4 sm:px-6 mt-4 pb-4">
         <button onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 p-4 rounded-3xl bg-card border border-border text-red-400 font-medium">
+          className="w-full flex items-center justify-center gap-2 p-4 rounded-3xl bg-card border border-border text-red-400 font-medium transition-all hover:-translate-y-0.5 hover:border-red-400/30 hover:bg-red-500/10">
           <LogOut className="size-4" /> Log out
         </button>
       </div>

@@ -42,8 +42,8 @@ function GroupsPage() {
         <div className="flex rounded-2xl bg-card border border-border p-1 gap-1">
           {tabs.map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all ${
-                tab === t.id ? "gradient-primary text-primary-foreground" : "text-muted-foreground"
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all hover:-translate-y-0.5 ${
+                tab === t.id ? "gradient-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}>
               {t.icon} {t.label}
             </button>
@@ -131,7 +131,7 @@ function MyGroupTab() {
   return (
     <TabWrap>
       {/* Group card */}
-      <div className="p-5 rounded-3xl gradient-balance text-white shadow-[var(--shadow-card)]">
+      <motion.div whileHover={{ y: -3, scale: 1.01 }} className="p-5 rounded-3xl gradient-balance text-white shadow-[var(--shadow-card)] transition-shadow hover:shadow-[0_24px_60px_rgba(0,128,170,0.28)]">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-xl font-bold truncate">{group?.name}</div>
@@ -149,24 +149,24 @@ function MyGroupTab() {
           </div>
           {user.role === "admin" && (
             <button onClick={() => { setSettingsForm({ name: group?.name ?? "", description: group?.description ?? "", isPublic: group?.isPublic ?? false }); setShowSettings(true); }}
-              className="size-9 rounded-xl bg-white/20 grid place-items-center shrink-0">
+              className="size-9 rounded-xl bg-white/20 grid place-items-center shrink-0 transition-all hover:-translate-y-0.5 hover:bg-white/30">
               <Settings2 className="size-4" />
             </button>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Invite code */}
-      <div className="p-4 rounded-2xl bg-card border border-border">
+      <div className="p-4 rounded-2xl bg-card border border-border transition-all hover:border-primary/30 hover:shadow-[0_12px_28px_rgba(0,0,0,0.10)]">
         <div className="text-xs text-muted-foreground mb-2">Invite Code</div>
         <div className="flex items-center gap-3">
           <div className="flex-1 font-mono font-bold tracking-[0.25em] text-xl">{group?.inviteCode}</div>
-          <button onClick={copyCode} className="size-9 rounded-xl bg-muted grid place-items-center">
+          <button onClick={copyCode} className="size-9 rounded-xl bg-muted grid place-items-center transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary">
             {copied ? <Check className="size-4 text-green-400" /> : <Copy className="size-4" />}
           </button>
           {user.role === "admin" && (
             <button onClick={() => regenMutation.mutate()} disabled={regenMutation.isPending}
-              className="size-9 rounded-xl bg-muted grid place-items-center">
+              className="size-9 rounded-xl bg-muted grid place-items-center transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary">
               <RefreshCw className={`size-4 ${regenMutation.isPending ? "animate-spin" : ""}`} />
             </button>
           )}
@@ -178,7 +178,7 @@ function MyGroupTab() {
         <div className="text-sm font-semibold mb-2">Members</div>
         <div className="space-y-2">
           {(group?.members ?? []).map((m) => (
-            <div key={m._id} className="flex items-center gap-3 p-3 rounded-2xl bg-card border border-border">
+            <div key={m._id} className="flex items-center gap-3 p-3 rounded-2xl bg-card border border-border transition-all hover:translate-x-1 hover:border-primary/30 hover:bg-primary/5">
               <div className="size-9 rounded-full bg-muted overflow-hidden grid place-items-center text-sm shrink-0">
                 {m.avatar ? <img src={m.avatar} alt={m.name} className="size-full object-cover" /> : "👤"}
               </div>
@@ -194,7 +194,7 @@ function MyGroupTab() {
       {/* Leave group */}
       {user.role !== "admin" && (
         <button onClick={() => leaveMutation.mutate()} disabled={leaveMutation.isPending}
-          className="w-full h-11 rounded-2xl bg-red-500/10 text-red-400 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50">
+          className="w-full h-11 rounded-2xl bg-red-500/10 text-red-400 text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:-translate-y-0.5 hover:bg-red-500/15 disabled:opacity-50">
           <LogOut className="size-4" /> {leaveMutation.isPending ? "Leaving…" : "Leave Group"}
         </button>
       )}
@@ -322,7 +322,8 @@ function DiscoverTab() {
         {groups.map((group: ApiDiscoverGroup, i: number) => (
           <motion.div key={group._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.04 }}
-            className="p-4 rounded-3xl bg-card border border-border">
+            whileHover={{ y: -3, scale: 1.01 }}
+            className="p-4 rounded-3xl bg-card border border-border transition-all hover:border-primary/30 hover:shadow-[0_16px_34px_rgba(0,0,0,0.12)]">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <div className="font-semibold">{group.name}</div>
@@ -347,7 +348,7 @@ function DiscoverTab() {
                   <div className="grid grid-cols-2 gap-2">
                     {(["permanent", "occasional"] as const).map((t) => (
                       <button key={t} onClick={() => setMemberType(t)}
-                        className={`p-2.5 rounded-xl border text-xs text-left transition-all ${memberType === t ? "border-primary bg-primary/10" : "border-border"}`}>
+                        className={`p-2.5 rounded-xl border text-xs text-left transition-all hover:-translate-y-0.5 ${memberType === t ? "border-primary bg-primary/10" : "border-border hover:border-primary/30 hover:bg-primary/5"}`}>
                         <div className="font-semibold">{t === "permanent" ? "👤 Regular" : "⏱ Occasional"}</div>
                         <div className="text-muted-foreground mt-0.5">{t === "permanent" ? "Always split" : "Split when present"}</div>
                       </button>
@@ -363,11 +364,11 @@ function DiscoverTab() {
                   )}
                   <div className="flex gap-2">
                     <button onClick={() => requestMutation.mutate({ groupId: group._id })} disabled={requestMutation.isPending}
-                      className="flex-1 h-10 rounded-xl gradient-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50">
+                      className="flex-1 h-10 rounded-xl gradient-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-1.5 transition-all hover:-translate-y-0.5 disabled:opacity-50">
                       {requestMutation.isPending ? <><Loader2 className="size-4 animate-spin" /> Sending…</> : "Send Request"}
                     </button>
                     <button onClick={() => { setRequestingId(null); setMessage(""); }}
-                      className="px-4 h-10 rounded-xl bg-muted text-sm">Cancel</button>
+                      className="px-4 h-10 rounded-xl bg-muted text-sm transition-colors hover:bg-primary/10 hover:text-primary">Cancel</button>
                   </div>
                 </motion.div>
               )}
@@ -395,7 +396,7 @@ function DiscoverActionButton({ group, onRequest, onCancel, cancelling }: {
       <XCircle className="size-3.5" /> Retry
     </button>
   );
-  return <button onClick={onRequest} className="px-3 py-1.5 rounded-xl gradient-primary text-primary-foreground text-xs font-semibold shrink-0">Request Join</button>;
+  return <button onClick={onRequest} className="px-3 py-1.5 rounded-xl gradient-primary text-primary-foreground text-xs font-semibold shrink-0 transition-transform hover:-translate-y-0.5">Request Join</button>;
 }
 
 // ─── Join By Invite Code Tab ──────────────────────────────────────────────────
@@ -470,7 +471,7 @@ function JoinTab({ onSuccess }: { onSuccess: () => void }) {
             <div className="grid grid-cols-2 gap-3">
               {(["permanent", "occasional"] as const).map((t) => (
                 <button key={t} onClick={() => setMemberType(t)}
-                  className={`p-3 rounded-2xl border text-left transition-all ${memberType === t ? "border-primary bg-primary/10" : "border-border bg-card"}`}>
+                  className={`p-3 rounded-2xl border text-left transition-all hover:-translate-y-0.5 ${memberType === t ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/30 hover:bg-primary/5"}`}>
                   <div className="text-sm font-semibold">{t === "permanent" ? "👤 Regular" : "⏱ Occasional"}</div>
                   <div className="text-xs text-muted-foreground mt-0.5">{t === "permanent" ? "Always split" : "Split when present"}</div>
                 </button>
@@ -481,7 +482,7 @@ function JoinTab({ onSuccess }: { onSuccess: () => void }) {
               className="w-full h-10 px-4 rounded-xl bg-card border border-border text-sm focus:outline-none focus:border-primary" />
             {error && <p className="text-sm text-red-400 text-center">{error}</p>}
             <button disabled={inviteCode.trim().length !== 8 || loading} onClick={handleRequest}
-              className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground font-semibold disabled:opacity-40 flex items-center justify-center gap-2">
+              className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground font-semibold transition-all hover:-translate-y-0.5 disabled:opacity-40 flex items-center justify-center gap-2">
               {loading ? <><div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Sending…</> : "Send Join Request"}
             </button>
           </motion.div>
@@ -496,7 +497,7 @@ function JoinTab({ onSuccess }: { onSuccess: () => void }) {
             </div>
             {error && <p className="text-sm text-red-400">{error}</p>}
             <button onClick={checkApproval} disabled={loading}
-              className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground font-semibold disabled:opacity-40 flex items-center justify-center gap-2">
+              className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground font-semibold transition-all hover:-translate-y-0.5 disabled:opacity-40 flex items-center justify-center gap-2">
               {loading ? <><div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Checking…</> : "I've been approved →"}
             </button>
             <button onClick={() => { setStep("form"); setError(""); }} className="text-sm text-muted-foreground underline">Use a different code</button>
@@ -572,7 +573,8 @@ function RequestsTab() {
           {pendingRequests.map((req, i) => (
             <motion.div key={req._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="p-4 rounded-3xl bg-card border border-border">
+              whileHover={{ y: -3, scale: 1.01 }}
+              className="p-4 rounded-3xl bg-card border border-border transition-all hover:border-primary/30 hover:shadow-[0_16px_34px_rgba(0,0,0,0.12)]">
               <div className="flex items-start gap-3">
                 <div className="size-12 rounded-full bg-muted overflow-hidden grid place-items-center shrink-0">
                   {req.userId.avatar
@@ -600,12 +602,12 @@ function RequestsTab() {
               <div className="flex gap-2 mt-3">
                 <button onClick={() => approveMutation.mutate(req._id)}
                   disabled={approveMutation.isPending}
-                  className="flex-1 h-10 rounded-xl bg-green-500/15 text-green-400 text-sm font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50">
+                  className="flex-1 h-10 rounded-xl bg-green-500/15 text-green-400 text-sm font-semibold flex items-center justify-center gap-1.5 transition-all hover:-translate-y-0.5 hover:bg-green-500/20 disabled:opacity-50">
                   <UserCheck className="size-4" /> Approve
                 </button>
                 <button onClick={() => rejectMutation.mutate(req._id)}
                   disabled={rejectMutation.isPending}
-                  className="flex-1 h-10 rounded-xl bg-red-500/15 text-red-400 text-sm font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50">
+                  className="flex-1 h-10 rounded-xl bg-red-500/15 text-red-400 text-sm font-semibold flex items-center justify-center gap-1.5 transition-all hover:-translate-y-0.5 hover:bg-red-500/20 disabled:opacity-50">
                   <UserX className="size-4" /> Reject
                 </button>
               </div>

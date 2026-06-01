@@ -24,18 +24,20 @@ const app = express();
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.set('etag', false);
+app.set('trust proxy', 1);
 
-const allowedOrigins = [
+const allowedOrigins = new Set([
   env.FRONTEND_URL,
+  ...(env.CORS_ORIGINS?.split(',').map((origin) => origin.trim()).filter(Boolean) ?? []),
   'http://localhost:3000',
   'http://localhost:8080',
   'http://localhost:8081',
   'http://localhost:5173',
-];
+]);
 
 const corsOptions: CorsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.has(origin)) {
       callback(null, true);
     } else {
       callback(new Error(`CORS: origin '${origin}' not allowed`));
