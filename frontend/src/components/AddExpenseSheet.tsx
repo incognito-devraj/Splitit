@@ -220,16 +220,27 @@ function StepWrap({ children }: { children: React.ReactNode }) {
 function StepCategory({ onPick }: { onPick: (c: Category) => void }) {
   return (
     <StepWrap>
-      <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">What did you spend on?</h2>
-      <p className="text-sm text-muted-foreground mt-1">Pick a category to start</p>
-      <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-3">
+      <h2 className="text-xl font-semibold tracking-tight">What did you spend on?</h2>
+      <p className="text-xs text-muted-foreground mt-0.5">Pick a category to start</p>
+      {/* 5-col grid — all 15 categories fit in 3 rows without scrolling */}
+      <div className="mt-3 grid grid-cols-5 gap-2">
         {CATEGORIES.map((c, i) => (
-          <motion.button key={c.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.03 }} whileTap={{ scale: 0.94 }} whileHover={{ y: -4, scale: 1.02 }}
+          <motion.button
+            key={c.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.02 }}
+            whileTap={{ scale: 0.92 }}
+            whileHover={{ y: -2 }}
             onClick={() => onPick(c.id)}
-            className="group aspect-square rounded-2xl bg-surface-elevated border border-border flex flex-col items-center justify-center gap-1.5 active:bg-muted transition-all duration-200 hover:border-primary/30 hover:shadow-[0_12px_30px_rgba(0,0,0,0.08)]">
-            <span className="text-3xl transition-transform duration-200 group-hover:scale-110 group-hover:rotate-6">{c.emoji}</span>
-            <span className="text-xs font-medium">{c.label}</span>
+            className="group flex flex-col items-center justify-center gap-1 py-2.5 rounded-2xl bg-muted/50 border border-border hover:border-primary/30 hover:bg-primary/5 transition-all duration-150"
+          >
+            <span className="text-2xl leading-none transition-transform duration-150 group-hover:scale-110">
+              {c.emoji}
+            </span>
+            <span className="text-[10px] font-medium text-muted-foreground leading-tight text-center px-0.5 line-clamp-1">
+              {c.label}
+            </span>
           </motion.button>
         ))}
       </div>
@@ -259,26 +270,26 @@ function StepAmount({
         <span className="text-xl">{cat.emoji}</span><span>{cat.label}</span>
       </div>
 
-      <div className="mt-2 sm:mt-3 flex items-baseline justify-center gap-1">
-        <span className="text-2xl font-medium text-muted-foreground">₹</span>
+      <div className="mt-2 flex items-baseline justify-center gap-1">
+        <span className="text-xl font-medium text-muted-foreground">₹</span>
         <motion.span key={display} initial={{ scale: 0.96, opacity: 0.6 }} animate={{ scale: 1, opacity: 1 }}
-          className="text-4xl sm:text-5xl font-semibold tabular tracking-tight">{display}</motion.span>
+          className="text-4xl font-semibold tabular tracking-tight">{display}</motion.span>
       </div>
 
       <input type="text" value={title} onChange={(e) => onTitleChange(e.target.value)}
         placeholder="Add a description of what you spent on"
         required
         aria-label="Expense description"
-        className="mt-2.5 w-full h-9 px-4 rounded-xl bg-muted border border-border text-sm focus:outline-none focus:border-primary text-center" />
-      <p className="mt-1 text-center text-xs text-muted-foreground">Required</p>
+        className="mt-2 w-full h-9 px-4 rounded-xl bg-muted border border-border text-sm focus:outline-none focus:border-primary text-center" />
+      <p className="mt-0.5 text-center text-xs text-muted-foreground">Required</p>
 
       <div className="mt-2">
-        <label className="text-xs text-muted-foreground font-medium block mb-1.5">Who paid?</label>
+        <label className="text-xs text-muted-foreground font-medium block mb-1">Who paid?</label>
         <div className="relative">
           <select
             value={paidById}
             onChange={(e) => onPaidByChange(e.target.value)}
-            className="w-full h-10 pl-4 pr-10 rounded-xl bg-card border border-border text-sm font-medium appearance-none focus:outline-none focus:border-primary cursor-pointer"
+            className="w-full h-9 pl-4 pr-10 rounded-xl bg-card border border-border text-sm font-medium appearance-none focus:outline-none focus:border-primary cursor-pointer"
           >
             {members.map((m) => (
               <option key={m._id} value={m._id}>{m.name}</option>
@@ -287,23 +298,23 @@ function StepAmount({
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
         </div>
         {paidByMember && (
-          <p className="text-xs text-muted-foreground mt-1 text-center">
+          <p className="text-xs text-muted-foreground mt-0.5 text-center">
             {paidByMember.name} will be recorded as the payer
           </p>
         )}
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2">
+      <div className="mt-2 grid grid-cols-3 gap-1.5">
         {keys.map((k) => (
           <motion.button key={k} whileTap={{ scale: 0.9 }} onClick={() => onKey(k)}
-            className="h-11 sm:h-12 rounded-2xl bg-surface-elevated text-xl font-medium active:bg-muted grid place-items-center">
-            {k === "back" ? <Delete className="size-5" /> : k}
+            className="h-10 rounded-xl bg-muted/60 text-lg font-medium active:bg-muted grid place-items-center hover:bg-muted transition-colors">
+            {k === "back" ? <Delete className="size-4" /> : k}
           </motion.button>
         ))}
       </div>
 
       <motion.button whileTap={{ scale: 0.97 }} disabled={!Number(amount) || !title.trim()} onClick={onNext}
-        className="mt-3 w-full h-11 sm:h-12 rounded-2xl gradient-primary text-primary-foreground font-semibold text-base disabled:opacity-40 shadow-[var(--shadow-glow)]">
+        className="mt-2.5 w-full h-10 rounded-2xl gradient-primary text-primary-foreground font-semibold text-sm disabled:opacity-40 shadow-[var(--shadow-glow)]">
         Continue
       </motion.button>
     </StepWrap>

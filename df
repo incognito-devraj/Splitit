@@ -1,0 +1,11 @@
+[33m790c65a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Fixed the expenses bug added more options
+[33m1edb3c0[m V1.0.0
+[33m0500163[m v1.0.0
+[33m82a855d[m Final MVP except clearing expenses fn
+[33m93af410[m Correct the expenses details
+[33m00f0b76[m Dashboard working
+[33ma72176f[m Fixed the expences page
+[33md715d86[m[33m ([m[1;31morigin/main[m[33m)[m Add project without submodules
+[33mf7ede01[m Remove all files
+[33m189edb3[m Initially all working
+[33mf843888[m feat(backend): Initialize Splito backend with complete expense-splitting system
