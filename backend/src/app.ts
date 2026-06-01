@@ -36,6 +36,8 @@ app.use(helmet({
 // ── CORS ──────────────────────────────────────────────────────────────────────
 const allowedOrigins = new Set<string>([
   env.FRONTEND_URL,
+  // Production Vercel deployment — always allowed
+  'https://mysplitit.vercel.app',
   ...(env.CORS_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean) ?? []),
   // Always allow localhost variants in dev
   ...(!isProd ? [
