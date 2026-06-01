@@ -25,7 +25,6 @@ router.get('/members',           requireGroup,                        ctrl.getMe
 router.post('/leave',            requireGroup,                        ctrl.leaveGroup);
 router.patch('/settings',        requireGroup, requireAdmin, adminLimiter, validate(updateGroupSettingsSchema), ctrl.updateGroupSettings);
 router.post('/transfer-admin',   requireGroup, requireAdmin, adminLimiter, validate(transferAdminSchema),       ctrl.transferAdmin);
-router.post('/invite/regenerate',requireGroup, requireAdmin, adminLimiter,                                      ctrl.regenerateInviteCode);
 router.delete('/member/:id',     requireGroup, requireAdmin, adminLimiter, validate(memberIdSchema),            ctrl.removeMember);
 
 // Discover — no requireGroup (users without a group can browse)

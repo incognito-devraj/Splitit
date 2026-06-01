@@ -2,7 +2,8 @@ import mongoose, { Document, Schema, Types } from 'mongoose';
 
 export const CATEGORIES = [
   'food', 'grocery', 'electricity', 'wifi',
-  'rent', 'gas', 'maid', 'water', 'other',
+  'rent', 'gas', 'maid', 'water', 'lend', 'treat',
+  'transport', 'tuition', 'waterbill', 'gasbill', 'other',
 ] as const;
 
 export type ExpenseCategory = typeof CATEGORIES[number];
@@ -13,12 +14,13 @@ export interface IExpense extends Document {
   category: ExpenseCategory;
   amount: number;
   paidBy: Types.ObjectId;
-  sharedWith: Types.ObjectId[];       // registered members
-  guestParticipants: Types.ObjectId[]; // GuestParticipant refs
-  splitAmount: number;                 // amount / total participants
-  totalParticipants: number;           // sharedWith.length + guestParticipants.length
+  sharedWith: Types.ObjectId[];
+  guestParticipants: Types.ObjectId[];
+  splitAmount: number;
+  totalParticipants: number;
   notes: string;
   groupId: Types.ObjectId;
+  isEdited: boolean;          // true once the expense has been updated
   createdAt: Date;
   updatedAt: Date;
 }
@@ -47,6 +49,7 @@ const expenseSchema = new Schema<IExpense>(
     totalParticipants:{ type: Number, required: true, min: 1 },
     notes:    { type: String, trim: true, maxlength: 500, default: '' },
     groupId:  { type: Schema.Types.ObjectId, ref: 'Group', required: true },
+    isEdited: { type: Boolean, default: false },
   },
   {
     timestamps: true,

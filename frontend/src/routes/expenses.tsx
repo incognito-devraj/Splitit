@@ -10,6 +10,7 @@ import { ApiExpense, expenseApi } from "@/lib/api/endpoints";
 import { useAuth } from "@/lib/auth";
 import { useSheet } from "@/lib/sheet";
 import { QK } from "@/lib/queryKeys";
+import { formatINR, formatSplit } from "@/lib/format";
 
 export const Route = createFileRoute("/expenses")({
   head: () => ({ meta: [{ title: "Splitit - Expenses" }] }),
@@ -63,7 +64,7 @@ function Expenses() {
       <div className="px-4 sm:px-6 pt-6">
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Expenses</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {allExpenses.length} total · ₹{allExpenses.reduce((s, e) => s + e.amount, 0).toLocaleString("en-IN")}
+          {allExpenses.length} total · {formatINR(allExpenses.reduce((s, e) => s + e.amount, 0))}
         </p>
       </div>
 
@@ -172,7 +173,14 @@ function Expenses() {
                             {cat.emoji}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium">{e.title || cat.label}</div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <div className="font-medium">{e.title || cat.label}</div>
+                              {e.isEdited && (
+                                <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/20 shrink-0">
+                                  ✏️ Edited
+                                </span>
+                              )}
+                            </div>
                             <div className="text-xs text-muted-foreground mt-0.5">
                               {e.paidBy.name} paid · {(e.sharedWith?.length ?? 0) + (e.guestParticipants?.length ?? 0)} participants
                               {(e.guestParticipants?.length ?? 0) > 0 && (
@@ -186,9 +194,9 @@ function Expenses() {
                             )}
                           </div>
                           <div className="text-right shrink-0">
-                            <div className="font-semibold tabular">₹{e.amount.toLocaleString("en-IN")}</div>
+                            <div className="font-semibold tabular">{formatINR(e.amount)}</div>
                             <div className="text-[10px] text-muted-foreground">
-                              ₹{e.splitAmount.toFixed(0)}/head
+                              {formatSplit(e.splitAmount)}
                             </div>
                           </div>
                         </div>

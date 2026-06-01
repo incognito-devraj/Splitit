@@ -3,17 +3,26 @@ import { create } from "zustand";
 
 export type Category =
   | "food" | "grocery" | "electricity" | "wifi"
-  | "rent" | "gas" | "maid" | "water" | "other";
+  | "rent" | "gas" | "maid" | "water"
+  | "lend" | "treat"
+  | "transport" | "tuition" | "waterbill" | "gasbill"
+  | "other";
 
 export const CATEGORIES: { id: Category; label: string; emoji: string; tint: string }[] = [
-  { id: "food",        label: "Food",        emoji: "🍕", tint: "oklch(0.72 0.18 35)" },
+  { id: "food",        label: "Food",        emoji: "🍕", tint: "oklch(0.72 0.18 35)"  },
   { id: "grocery",     label: "Grocery",     emoji: "🛒", tint: "oklch(0.72 0.18 155)" },
-  { id: "electricity", label: "Electricity", emoji: "💡", tint: "oklch(0.78 0.16 75)" },
+  { id: "electricity", label: "Electricity", emoji: "💡", tint: "oklch(0.78 0.16 75)"  },
   { id: "wifi",        label: "WiFi",        emoji: "📶", tint: "oklch(0.68 0.20 245)" },
   { id: "rent",        label: "Rent",        emoji: "🏠", tint: "oklch(0.65 0.25 295)" },
-  { id: "gas",         label: "Gas",         emoji: "⛽", tint: "oklch(0.65 0.24 25)" },
+  { id: "gas",         label: "Gas",         emoji: "⛽", tint: "oklch(0.65 0.24 25)"  },
   { id: "maid",        label: "Maid",        emoji: "🧹", tint: "oklch(0.70 0.18 195)" },
   { id: "water",       label: "Water",       emoji: "🚿", tint: "oklch(0.70 0.18 220)" },
+  { id: "lend",        label: "Lend",        emoji: "🤝", tint: "oklch(0.68 0.22 165)" },
+  { id: "treat",       label: "Treat",       emoji: "🎉", tint: "oklch(0.72 0.22 320)" },
+  { id: "transport",   label: "Transport",   emoji: "🚌", tint: "oklch(0.68 0.20 230)" },
+  { id: "tuition",     label: "Tuition",     emoji: "📚", tint: "oklch(0.70 0.20 280)" },
+  { id: "waterbill",   label: "Water Bill",  emoji: "💧", tint: "oklch(0.65 0.18 210)" },
+  { id: "gasbill",     label: "Gas Bill",    emoji: "🔥", tint: "oklch(0.68 0.22 40)"  },
   { id: "other",       label: "Other",       emoji: "✨", tint: "oklch(0.68 0.12 260)" },
 ];
 

@@ -164,8 +164,9 @@ export async function updateExpense(
   const expense = await Expense.findById(expenseId);
   if (!expense) throw new AppError('Expense not found', 404);
   if (expense.groupId.toString() !== groupId) throw new AppError('Expense not in your group', 403);
-  if (expense.paidBy.toString() !== userId && !isAdmin) {
-    throw new AppError('Only the payer or admin can edit this expense', 403);
+  // Only the person who created (paid for) the expense can edit it
+  if (expense.paidBy.toString() !== userId) {
+    throw new AppError('Only the person who added this expense can edit it', 403);
   }
 
   const oldData = expense.toObject();
@@ -204,6 +205,9 @@ export async function updateExpense(
   }
 
   await expense.save();
+
+  // Mark as edited so the UI can show the "Edited" badge
+  await Expense.updateOne({ _id: expense._id }, { $set: { isEdited: true } });
 
   await ExpenseAudit.create({
     expenseId: expense._id,

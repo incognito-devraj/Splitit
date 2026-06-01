@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Plus, Search, Copy, Check, RefreshCw, LogOut, Settings2,
+  Plus, Search, Copy, Check, LogOut, Settings2,
   Users, Calendar, Loader2, CheckCircle, Clock, XCircle,
   Globe, Lock, UserCheck, UserX,
 } from "lucide-react";
@@ -76,11 +76,6 @@ function MyGroupTab() {
     queryKey: QK.group(activeGroupId),
     queryFn: () => groupApi.current().then((r) => r.data.data),
     enabled: !!activeGroupId,
-  });
-
-  const regenMutation = useMutation({
-    mutationFn: () => groupApi.regenerateCode(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["group"] }),
   });
 
   const leaveMutation = useMutation({
@@ -156,7 +151,7 @@ function MyGroupTab() {
         </div>
       </motion.div>
 
-      {/* Invite code */}
+      {/* Invite code — permanent, copy only */}
       <div className="p-4 rounded-2xl bg-card border border-border transition-all hover:border-primary/30 hover:shadow-[0_12px_28px_rgba(0,0,0,0.10)]">
         <div className="text-xs text-muted-foreground mb-2">Invite Code</div>
         <div className="flex items-center gap-3">
@@ -164,13 +159,10 @@ function MyGroupTab() {
           <button onClick={copyCode} className="size-9 rounded-xl bg-muted grid place-items-center transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary">
             {copied ? <Check className="size-4 text-green-400" /> : <Copy className="size-4" />}
           </button>
-          {user.role === "admin" && (
-            <button onClick={() => regenMutation.mutate()} disabled={regenMutation.isPending}
-              className="size-9 rounded-xl bg-muted grid place-items-center transition-all hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary">
-              <RefreshCw className={`size-4 ${regenMutation.isPending ? "animate-spin" : ""}`} />
-            </button>
-          )}
         </div>
+        <p className="text-[11px] text-muted-foreground mt-2">
+          Share this code to invite people. It never changes.
+        </p>
       </div>
 
       {/* Members list */}

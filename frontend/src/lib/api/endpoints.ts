@@ -40,7 +40,9 @@ export interface ApiExpense {
   totalParticipants: number;
   notes: string;
   groupId: string;
+  isEdited: boolean;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface ApiBalance {
@@ -183,7 +185,7 @@ export const expenseApi = {
     ),
   get: (id: string) =>
     api.get<{ success: true; data: ApiExpense }>(`/expenses/${id}`),
-  update: (id: string, body: Partial<{ title: string; category: string; amount: number; sharedWith: string[]; guestNames: string[] }>) =>
+  update: (id: string, body: Partial<{ title: string; category: string; amount: number; sharedWith: string[]; guestNames: string[]; notes: string }>) =>
     api.put<{ success: true; data: ApiExpense }>(`/expenses/${id}`, body),
   delete: (id: string) =>
     api.delete(`/expenses/${id}`),
