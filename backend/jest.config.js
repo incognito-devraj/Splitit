@@ -19,11 +19,6 @@ module.exports = {
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
-  // Load test env vars FIRST, before any module imports
-  setupFiles: ['<rootDir>/src/__tests__/testEnv.ts'],
-  // Then run DB setup after framework is ready
-  setupFilesAfterFramework: undefined,
-  setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
   testTimeout: 30000,
   verbose: true,
 };

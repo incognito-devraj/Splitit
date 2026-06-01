@@ -1,6 +1,7 @@
 import axios from "axios";
+import { publicConfig } from "@/lib/config";
 
-const BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:5000/api" : "/api");
+const BASE = publicConfig.apiUrl;
 
 export const api = axios.create({
   baseURL: BASE,

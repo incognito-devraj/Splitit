@@ -11,7 +11,7 @@ const options: swaggerJsdoc.Options = {
     },
     servers: [
       { url: `http://localhost:${env.PORT}/api`, description: 'Local' },
-      { url: 'https://splito-api.onrender.com/api', description: 'Production' },
+      ...(env.API_PUBLIC_URL ? [{ url: `${env.API_PUBLIC_URL}/api`, description: 'Configured' }] : []),
     ],
     components: {
       securitySchemes: {

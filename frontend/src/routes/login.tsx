@@ -4,13 +4,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth";
 import { useState, useEffect } from "react";
 import { ThemeToggle } from "@/lib/theme";
+import { publicConfig } from "@/lib/config";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Splitit - Login" }] }),
   component: LoginPage,
 });
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "";
+const GOOGLE_CLIENT_ID = publicConfig.googleClientId;
 
 // ─── Splash screen shown once on first load ───────────────────────────────────
 function SplashScreen({ onDone }: { onDone: () => void }) {
@@ -249,7 +250,7 @@ function LoginPage() {
                       onSuccess={handleSuccess}
                       onError={() =>
                         setError(
-                          "Google sign-in was cancelled or failed. Make sure localhost:3000 is added to your Google OAuth authorized origins."
+                          "Google sign-in was cancelled or failed. Make sure this app origin is added to your Google OAuth authorized origins."
                         )
                       }
                       theme="filled_black"
@@ -270,9 +271,7 @@ function LoginPage() {
                     <p className="text-sm text-red-400 text-center">{error}</p>
                     {error.includes("origin") && (
                       <p className="text-xs text-red-400/70 text-center mt-1">
-                        Go to Google Cloud Console → OAuth Client → Add{" "}
-                        <code className="bg-red-500/10 px-1 rounded">http://localhost:3000</code> to
-                        Authorized JavaScript Origins
+                        Add the current app URL to Google Cloud Console OAuth Authorized JavaScript origins.
                       </p>
                     )}
                   </motion.div>
