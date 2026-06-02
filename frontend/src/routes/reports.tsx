@@ -87,7 +87,7 @@ function Reports() {
       </div>
 
       {/* KPI row */}
-      <StaggerList className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <StaggerList className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         {kpis.map((k, i) => {
           const Icon = k.icon;
           return (
@@ -112,16 +112,21 @@ function Reports() {
         })}
       </StaggerList>
 
-      {/* Generate report button */}
-      <motion.button
+      {/* Share Report button — between KPIs and charts */}
+      <motion.div
         variants={cardVariants} initial="hidden" animate="visible"
         transition={{ ...SPRING, delay: 0.1 }}
-        whileTap={{ scale: 0.97 }} whileHover={{ y: -2 }}
-        onClick={() => setShowFull(true)}
-        className="w-full h-12 rounded-2xl border border-primary/30 bg-primary/10 text-primary font-semibold flex items-center justify-center gap-2 transition-colors hover:bg-primary/15 mb-5"
+        className="flex justify-center mb-5"
       >
-        <FileText className="size-4" /> Generate Full Report
-      </motion.button>
+        <motion.button
+          whileTap={{ scale: 0.96 }} whileHover={{ y: -2 }}
+          onClick={() => setShowFull(true)}
+          className="h-10 px-6 rounded-xl gradient-primary text-primary-foreground text-sm font-semibold font-sans flex items-center gap-2 shadow-[0_4px_14px_rgba(0,0,0,0.12)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.18)] transition-all"
+        >
+          <Share2 className="size-4" />
+          Share Full Report
+        </motion.button>
+      </motion.div>
 
       {/* Monthly Trend — Area Chart */}
       <motion.div
@@ -240,120 +245,119 @@ function Reports() {
         </div>
       </motion.div>
 
-      {/* Settlement summary */}
-      <motion.div
-        variants={cardVariants} initial="hidden" animate="visible"
-        transition={{ ...SPRING, delay: 0.34 }}
-        className="rounded-3xl bg-card border border-border p-5 shadow-[0_1px_2px_rgba(0,0,0,.04)] mb-4"
-      >
-        <div className="text-xs uppercase tracking-wider text-muted-foreground mb-3 font-semibold">
-          📌 Settlement Summary
-        </div>
-        <div className="space-y-1">
-          {(summary?.summary ?? []).map((s) => (
-            <div
-              key={s.userId}
-              className="flex items-center justify-between text-sm p-2 rounded-xl hover:bg-muted/50 transition-colors"
-            >
-              <span className="font-medium">{s.name}</span>
-              <span className={`tabular font-bold ${s.action === "receives" ? "text-emerald-400" : "text-red-400"}`}>
-                {s.action} ₹{s.amount.toFixed(0)}
-              </span>
-            </div>
-          ))}
-          {(summary?.summary ?? []).length === 0 && !isLoading && (
-            <p className="text-sm text-muted-foreground text-center py-3">✅ All settled up!</p>
-          )}
-          {isLoading && <div className="h-16 bg-muted rounded-xl animate-pulse" />}
-        </div>
-        <motion.button
-          whileTap={{ scale: 0.97 }} whileHover={{ y: -2 }}
-          onClick={shareWhatsApp}
-          className="mt-4 w-full h-12 rounded-2xl gradient-primary text-primary-foreground font-semibold flex items-center justify-center gap-2"
-        >
-          <Share2 className="size-4" /> Share to WhatsApp
-        </motion.button>
-      </motion.div>
-
-      {/* Full Report Overlay */}
+      {/* Full Report Dialog — full screen mobile, centered modal desktop */}
       <AnimatePresence>
         {showFull && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-background/95 backdrop-blur-sm flex flex-col"
-          >
-            <div className="flex items-center justify-between px-5 pt-6 pb-3 border-b border-border">
-              <h2 className="text-xl font-bold tracking-tight">Full Report</h2>
-              <button
-                onClick={() => setShowFull(false)}
-                aria-label="Close full report"
-                className="size-10 rounded-full bg-muted grid place-items-center hover:bg-primary/10 transition-colors"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-5 pb-8 pt-4 space-y-4">
-              {/* Totals */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl p-4 bg-card border border-border">
-                  <div className="text-xs text-muted-foreground">Total expenses</div>
-                  <div className="text-2xl font-bold tabular mt-1">{summary?.totalExpenses ?? 0}</div>
-                </div>
-                <div className="rounded-2xl p-4 bg-card border border-border">
-                  <div className="text-xs text-muted-foreground">Total amount</div>
-                  <div className="text-2xl font-bold tabular text-gradient mt-1">
-                    ₹{(summary?.totalAmount ?? 0).toLocaleString("en-IN")}
-                  </div>
-                </div>
-              </div>
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm"
+              onClick={() => setShowFull(false)}
+            />
 
-              {/* Per member */}
-              <div className="rounded-2xl p-4 bg-card border border-border">
-                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-3 font-semibold">Per member</div>
-                <div className="space-y-2">
-                  {(summary?.balances ?? []).map((b) => (
-                    <div
-                      key={b.userId}
-                      className="flex items-center justify-between text-sm p-2 rounded-xl hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="size-7 rounded-full bg-muted overflow-hidden grid place-items-center shrink-0">
-                          {b.avatar
-                            ? <img src={b.avatar} alt={b.name} className="size-full object-cover" />
-                            : <span className="text-xs font-bold">{b.name[0]}</span>}
-                        </div>
-                        <span className="font-medium truncate">{b.name}</span>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className={`tabular font-bold ${b.netBalance >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                          {b.netBalance >= 0 ? "+" : "−"}₹{Math.abs(b.netBalance).toFixed(0)}
-                        </span>
-                        <div className="text-[10px] text-muted-foreground">
-                          paid ₹{b.totalPaid.toFixed(0)} · owes ₹{b.totalOwed.toFixed(0)}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+            {/* Panel: slides up from bottom on mobile, scales in centered on sm+ */}
+            <motion.div
+              initial={{ opacity: 0, y: "100%" }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
+              className={[
+                "fixed z-[61] bg-background flex flex-col",
+                // Mobile: full screen, anchored to bottom
+                "inset-x-0 bottom-0 top-0",
+                // sm+: centered modal with max dimensions
+                "sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2",
+                "sm:w-full sm:max-w-lg sm:max-h-[88vh]",
+                "sm:rounded-3xl sm:border sm:border-border sm:shadow-[0_24px_60px_rgba(0,0,0,0.25)]",
+              ].join(" ")}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border shrink-0">
+                <div>
+                  <h2 className="text-lg font-bold tracking-tight">Full Report</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">{summary?.groupName ?? "Group summary"}</p>
                 </div>
-              </div>
-
-              {/* WhatsApp message */}
-              <div className="rounded-2xl p-4 bg-card border border-border">
-                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2 font-semibold">
-                  WhatsApp Message
-                </div>
-                <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-sans leading-relaxed bg-muted/40 rounded-xl p-3">
-                  {summary?.whatsappText}
-                </pre>
                 <button
-                  onClick={shareWhatsApp}
-                  className="mt-3 w-full h-10 rounded-xl gradient-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-2"
+                  onClick={() => setShowFull(false)}
+                  aria-label="Close"
+                  className="size-9 rounded-full bg-muted grid place-items-center hover:bg-primary/10 transition-colors shrink-0"
                 >
-                  <Share2 className="size-3.5" /> Share
+                  <X className="size-4" />
                 </button>
               </div>
-            </div>
-          </motion.div>
+
+              {/* Scrollable body */}
+              <div className="flex-1 overflow-y-auto px-5 pt-4 pb-4 space-y-4 overscroll-contain">
+                {/* Totals */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl p-4 bg-card border border-border">
+                    <div className="text-xs text-muted-foreground">Total expenses</div>
+                    <div className="text-2xl font-bold tabular mt-1">{summary?.totalExpenses ?? 0}</div>
+                  </div>
+                  <div className="rounded-2xl p-4 bg-card border border-border">
+                    <div className="text-xs text-muted-foreground">Total amount</div>
+                    <div className="text-2xl font-bold tabular text-gradient mt-1">
+                      ₹{(summary?.totalAmount ?? 0).toLocaleString("en-IN")}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Per member */}
+                <div className="rounded-2xl p-4 bg-card border border-border">
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-3 font-semibold">Per member</div>
+                  <div className="space-y-2">
+                    {(summary?.balances ?? []).map((b) => (
+                      <div
+                        key={b.userId}
+                        className="flex items-center justify-between text-sm p-2 rounded-xl hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="size-8 rounded-full bg-muted overflow-hidden grid place-items-center shrink-0">
+                            {b.avatar
+                              ? <img src={b.avatar} alt={b.name} className="size-full object-cover" />
+                              : <span className="text-xs font-bold">{b.name[0]}</span>}
+                          </div>
+                          <span className="font-medium truncate">{b.name}</span>
+                        </div>
+                        <div className="text-right shrink-0 ml-2">
+                          <div className={`tabular font-bold text-sm ${b.netBalance >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                            {b.netBalance >= 0 ? "+" : "−"}₹{Math.abs(b.netBalance).toFixed(0)}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">
+                            paid ₹{b.totalPaid.toFixed(0)} · owes ₹{b.totalOwed.toFixed(0)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {(summary?.balances ?? []).length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-3">No members yet</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* WhatsApp message preview */}
+                <div className="rounded-2xl p-4 bg-card border border-border">
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2 font-semibold">
+                    Message Preview
+                  </div>
+                  <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-sans leading-relaxed bg-muted/40 rounded-xl p-3">
+                    {summary?.whatsappText}
+                  </pre>
+                </div>
+              </div>
+
+              {/* Sticky footer action */}
+              <div className="shrink-0 px-5 py-4 border-t border-border">
+                <button
+                  onClick={shareWhatsApp}
+                  className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground font-semibold font-sans flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(0,0,0,0.12)] active:scale-[0.98] transition-transform"
+                >
+                  <Share2 className="size-4" /> Share to WhatsApp
+                </button>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </AppShell>

@@ -29,5 +29,10 @@ router.delete('/member/:id',     requireGroup, requireAdmin, adminLimiter, valid
 
 // Discover — no requireGroup (users without a group can browse)
 router.get('/discover',          publicLimiter, validate(discoverGroupsSchema),      ctrl.discoverGroups);
+router.post('/invite/regenerate', requireGroup, requireAdmin, adminLimiter,          ctrl.regenerateInviteCode);
+
+// Export & Clear — uses req.user.groupId (active group), no :groupId param needed
+router.get('/export-report',     requireGroup, requireAdmin, adminLimiter, ctrl.exportReport);
+router.post('/clear-expenses',   requireGroup, requireAdmin, adminLimiter, ctrl.clearAllExpenses);
 
 export default router;

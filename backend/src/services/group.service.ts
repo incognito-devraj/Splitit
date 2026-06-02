@@ -2,6 +2,10 @@ import { type ClientSession, Types } from 'mongoose';
 import { Group, IGroup } from '../models/Group.model';
 import { User, IUser } from '../models/User.model';
 import { JoinRequest } from '../models/JoinRequest.model';
+import { Expense } from '../models/Expense.model';
+import { Settlement } from '../models/Settlement.model';
+import { ExpenseAudit } from '../models/ExpenseAudit.model';
+import { computeGroupBalances } from './balance.service';
 import { AppError } from '../middleware/error.middleware';
 import { uniqueInviteCode } from '../utils/inviteCode';
 import { logger } from '../utils/logger';
@@ -361,4 +365,131 @@ export async function updateGroupSettings(
   await group.save();
   logger.info(`Group settings updated by ${admin.email}`);
   return group;
+}
+
+// ─── Export & Clear ───────────────────────────────────────────────────────────
+
+export async function generateExpenseReport(groupId: string): Promise<string> {
+  const gid = new Types.ObjectId(groupId);
+
+  const group = await Group.findById(gid).lean();
+  if (!group) throw new AppError('Group not found', 404);
+
+  const expenses = await Expense.find({ groupId: gid })
+    .populate('paidBy', 'name')
+    .populate('sharedWith', 'name')
+    .populate('guestParticipants', 'name')
+    .sort({ createdAt: 1 })
+    .lean();
+
+  const balances = await computeGroupBalances(groupId);
+
+  // Build report header
+  let report = `Group: ${group.name}\n\n`;
+
+  // Expenses section
+  report += 'Expenses:\n';
+  if (expenses.length === 0) {
+    report += 'No expenses recorded\n';
+  } else {
+    for (const expense of expenses) {
+      const date = new Date(expense.createdAt).toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+      const payer = (expense.paidBy as any)?.name ?? 'Unknown';
+      const amount = `₹${expense.amount.toLocaleString('en-IN')}`;
+      const title = expense.title || expense.category;
+
+      report += `${date} ${payer} paid ${amount} for ${title}\n`;
+
+      // Add participants
+      const participants: string[] = [];
+      if (expense.sharedWith) {
+        participants.push(...(expense.sharedWith as any[]).map((m: any) => m.name));
+      }
+      if (expense.guestParticipants) {
+        participants.push(...(expense.guestParticipants as any[]).map((g: any) => g.name));
+      }
+
+      if (participants.length > 0) {
+        report += `  Split among: ${participants.join(', ')}\n`;
+      }
+    }
+  }
+
+  // Final balances section
+  report += '\nFinal Balances:\n';
+  const settlements = balances
+    .filter((b) => b.netBalance < -0.5)
+    .map((debtor) => {
+      const creditors = balances.filter((c) => c.netBalance > 0.5);
+      if (creditors.length === 0) return null;
+
+      // Simple settlement: debtor owes to the largest creditor
+      const creditor = creditors.reduce((max, c) => (c.netBalance > max.netBalance ? c : max));
+      return {
+        fromName: debtor.name,
+        toName: creditor.name,
+        amount: Math.abs(debtor.netBalance),
+      };
+    })
+    .filter((s) => s !== null);
+
+  if (settlements.length === 0) {
+    report += 'All settled up!\n';
+  } else {
+    for (const settlement of settlements) {
+      report += `${settlement!.fromName} owes ${settlement!.toName} ₹${settlement!.amount.toLocaleString('en-IN')}\n`;
+    }
+  }
+
+  // Add generation timestamp
+  const timestamp = new Date().toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  report += `\nGenerated on: ${timestamp}\n`;
+
+  logger.info(`Expense report generated for group ${groupId}`);
+  return report;
+}
+
+export async function clearAllExpenses(groupId: string, adminId: string) {
+  return withMongoTransaction('clearAllExpenses', async (session) => {
+    const admin = await User.findById(adminId).session(session ?? null);
+    if (!admin?.groupId) throw new AppError('Not in a group', 403);
+
+    const group = await Group.findById(groupId).session(session ?? null);
+    if (!group) throw new AppError('Group not found', 404);
+
+    if (group.adminId.toString() !== adminId) {
+      throw new AppError('Admin access required', 403);
+    }
+
+    if (admin.groupId.toString() !== groupId) {
+      throw new AppError('Can only clear expenses for your active group', 403);
+    }
+
+    const gid = new Types.ObjectId(groupId);
+
+    const expenseResult = await Expense.deleteMany({ groupId: gid }, { session });
+    const settlementResult = await Settlement.deleteMany({ groupId: gid }, { session });
+    await ExpenseAudit.deleteMany({ groupId: gid }, { session });
+
+    logger.info(
+      `Cleared ${expenseResult.deletedCount} expenses and ${settlementResult.deletedCount} settlements for group ${groupId} by admin ${adminId}`,
+    );
+
+    return {
+      success: true,
+      message: 'All expense records have been cleared successfully.',
+      deletedExpenses: expenseResult.deletedCount,
+      deletedSettlements: settlementResult.deletedCount,
+    };
+  });
 }

@@ -93,3 +93,17 @@ export async function updateGroupSettings(req: Request, res: Response, next: Nex
     ok(res, group);
   } catch (e) { next(e); }
 }
+
+export async function exportReport(req: Request, res: Response, next: NextFunction) {
+  try {
+    const report = await svc.generateExpenseReport(req.user.groupId!);
+    ok(res, { report, generatedAt: new Date() });
+  } catch (e) { next(e); }
+}
+
+export async function clearAllExpenses(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await svc.clearAllExpenses(req.user.groupId!, req.user._id);
+    ok(res, result);
+  } catch (e) { next(e); }
+}

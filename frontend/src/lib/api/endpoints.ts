@@ -140,6 +140,10 @@ export const groupApi = {
     api.patch<{ success: true; data: ApiGroup }>("/groups/settings", body),
   discover: (params?: { search?: string; page?: number; limit?: number }) =>
     api.get<{ success: true; data: { groups: ApiDiscoverGroup[]; total: number } }>("/groups/discover", { params }),
+  exportReport: () =>
+    api.get<{ success: true; data: { report: string; generatedAt: string } }>(`/groups/export-report`),
+  clearExpenses: () =>
+    api.post<{ success: true; data: { success: boolean; message: string; deletedExpenses: number; deletedSettlements: number } }>(`/groups/clear-expenses`),
 };
 
 // ─── Join Requests ────────────────────────────────────────────────────────────
