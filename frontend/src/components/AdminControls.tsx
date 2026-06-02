@@ -10,6 +10,7 @@ type Step = "idle" | "date-picker" | "preview";
 
 interface AdminControlsProps {
   isAdmin: boolean;
+  compact?: boolean; // when true, removes the outer px padding (for use inside already-padded containers)
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -26,7 +27,7 @@ function fmtDate(d: string) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function AdminControls({ isAdmin }: AdminControlsProps) {
+export function AdminControls({ isAdmin, compact = false }: AdminControlsProps) {
   const qc = useQueryClient();
 
   // report flow state
@@ -193,7 +194,7 @@ export function AdminControls({ isAdmin }: AdminControlsProps) {
   return (
     <>
       {/* ── Admin Action Card ── */}
-      <div className="px-4 sm:px-6 mt-4">
+      <div className={compact ? "" : "px-4 sm:px-6 mt-4"}>
         <div className="p-4 rounded-3xl bg-card border border-border">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
             Admin Actions

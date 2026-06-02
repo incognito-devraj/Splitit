@@ -272,7 +272,7 @@ function Reports() {
 
       {/* Admin Controls */}
       <div className="mb-4">
-        <AdminControls isAdmin={isAdmin} />
+        <AdminControls isAdmin={isAdmin} compact />
       </div>
 
       {/* Remove member confirmation */}
