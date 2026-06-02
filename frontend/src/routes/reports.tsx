@@ -39,7 +39,19 @@ function Reports() {
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const activeGroupId = user?.groupId ?? null;
-  const isAdmin = user?.role === "admin";
+
+  const { data: group } = useQuery({
+    queryKey: QK.group(activeGroupId),
+    queryFn: () => groupApi.current().then((r) => r.data.data),
+    enabled: !!activeGroupId,
+  });
+
+  // Check ownership against group.adminId — never stale unlike user.role field
+  const isAdmin = !!group && (
+    typeof group.adminId === "object"
+      ? (group.adminId as { _id: string })._id === user?._id
+      : group.adminId === user?._id
+  );
 
   const { data: summary, isLoading: sumLoading } = useQuery({
     queryKey: QK.summary(activeGroupId),
@@ -64,12 +76,6 @@ function Reports() {
     queryFn: () => balanceApi.all().then((r) => r.data.data),
     enabled: !!activeGroupId,
     refetchInterval: 15_000,
-  });
-
-  const { data: group } = useQuery({
-    queryKey: QK.group(activeGroupId),
-    queryFn: () => groupApi.current().then((r) => r.data.data),
-    enabled: !!activeGroupId,
   });
 
   const settleMutation = useMutation({

@@ -463,18 +463,12 @@ export async function generateExpenseReport(groupId: string): Promise<string> {
 
 export async function clearAllExpenses(groupId: string, adminId: string) {
   return withMongoTransaction('clearAllExpenses', async (session) => {
-    const admin = await User.findById(adminId).session(session ?? null);
-    if (!admin?.groupId) throw new AppError('Not in a group', 403);
-
     const group = await Group.findById(groupId).session(session ?? null);
     if (!group) throw new AppError('Group not found', 404);
 
+    // Verify caller is the group admin — not role field (which can be stale)
     if (group.adminId.toString() !== adminId) {
-      throw new AppError('Admin access required', 403);
-    }
-
-    if (admin.groupId.toString() !== groupId) {
-      throw new AppError('Can only clear expenses for your active group', 403);
+      throw new AppError('Only the group admin can clear expenses', 403);
     }
 
     const gid = new Types.ObjectId(groupId);
