@@ -159,13 +159,15 @@ export async function setActiveGroupForUser(userId: string, groupId: string) {
   const isMember = user.groupIds.some((id) => id.equals(gid)) || (user.groupId?.equals(gid) ?? false);
   if (!isMember) throw new AppError('You are not a member of that group', 403);
 
-  await setActiveGroup(user, gid);
-
+  // Update role to reflect the correct role in the target group
   const group = await Group.findById(gid)
     .populate<{ members: IUser[] }>('members', 'name email avatar role')
     .populate<{ adminId: IUser }>('adminId', 'name email avatar');
-
   if (!group) throw new AppError('Group not found', 404);
+
+  user.role = group.adminId.toString() === userId ? 'admin' : 'member';
+  await setActiveGroup(user, gid);
+
   return group;
 }
 

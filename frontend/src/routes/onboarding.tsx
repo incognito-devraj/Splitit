@@ -38,6 +38,7 @@ function OnboardingPage() {
       const { data } = await groupApi.create(groupName.trim());
       setUser(data.data.user);
       qc.invalidateQueries({ queryKey: QK.groupsMine });
+      qc.invalidateQueries({ queryKey: ["group"] });
       navigate({ to: "/" });
     } catch (e: unknown) {
       setError((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Failed to create group");

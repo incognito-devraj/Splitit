@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Home, Receipt, Users, BarChart3, Settings, Plus, Layers, ChevronDown, type LucideIcon } from "lucide-react";
+import { Home, Receipt, Users, BarChart3, Settings, Plus, Layers, ChevronDown, Crown, Loader2, type LucideIcon } from "lucide-react";
 import { BottomNav } from "./BottomNav";
 import { AddExpenseSheet } from "./AddExpenseSheet";
 import { useSheet } from "@/lib/sheet";
@@ -224,6 +224,8 @@ export function GroupSwitcher({ compact = false }: { compact?: boolean }) {
       await queryClient.invalidateQueries({ queryKey: ["expenses"] });
       await queryClient.invalidateQueries({ queryKey: ["balances"] });
       await queryClient.invalidateQueries({ queryKey: ["summary"] });
+      await queryClient.invalidateQueries({ queryKey: ["summary-category"] });
+      await queryClient.invalidateQueries({ queryKey: ["settlements"] });
     },
   });
 
@@ -281,13 +283,25 @@ export function GroupSwitcher({ compact = false }: { compact?: boolean }) {
         {groups.map((group) => (
           <DropdownMenuItem
             key={group._id}
-            onClick={() => switchMutation.mutate(group._id)}
-            className="flex items-center justify-between gap-3"
+            onClick={() => group._id !== activeGroupId && switchMutation.mutate(group._id)}
+            className="flex items-center justify-between gap-3 cursor-pointer"
           >
             <span className="truncate">{group.name}</span>
-            {group._id === activeGroupId && <span className="text-xs text-primary">Active</span>}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {typeof group.adminId === "object"
+                ? group.adminId._id === user._id && <Crown className="size-3 text-amber-400" />
+                : group.adminId === user._id && <Crown className="size-3 text-amber-400" />}
+              {group._id === activeGroupId && <span className="text-xs text-primary font-semibold">Active</span>}
+              {switchMutation.isPending && group._id !== activeGroupId && <Loader2 className="size-3 animate-spin text-muted-foreground" />}
+            </div>
           </DropdownMenuItem>
         ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="cursor-pointer text-primary font-medium">
+          <Link to="/groups" className="flex items-center gap-2">
+            <Plus className="size-4" /> Create or join a group
+          </Link>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
