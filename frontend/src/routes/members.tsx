@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Copy, Check, UserMinus, X, UserCheck, UserX, Clock, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { AdminControls } from "@/components/AdminControls";
 import { balanceApi, settlementApi, groupApi, joinRequestApi } from "@/lib/api/endpoints";
 import { useAuth } from "@/lib/auth";
 import { QK } from "@/lib/queryKeys";
@@ -150,8 +149,6 @@ function Members() {
           </div>
         </div>
       )}
-
-      <AdminControls isAdmin={isAdmin} />
 
       <AnimatePresence mode="wait">
         {tab === "members" && (
