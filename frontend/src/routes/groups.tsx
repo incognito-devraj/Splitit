@@ -650,7 +650,8 @@ function RequestsTab() {
   const { data: pendingRequests = [], isLoading } = useQuery({
     queryKey: ["join-requests-pending"],
     queryFn: () => joinRequestApi.pending().then((r) => r.data.data),
-    enabled: !!user?.groupId && isAdmin,
+    enabled: !!user?.groupId,
+    refetchInterval: 20_000,
   });
 
   const approveMutation = useMutation({
@@ -673,17 +674,7 @@ function RequestsTab() {
     <TabWrap>
       <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
         <span className="text-4xl">📋</span>
-        <p className="text-sm text-muted-foreground">Join a group to see requests.</p>
-      </div>
-    </TabWrap>
-  );
-
-  if (!isAdmin) return (
-    <TabWrap>
-      <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-        <span className="text-4xl">🔒</span>
-        <p className="font-semibold">Admin only</p>
-        <p className="text-sm text-muted-foreground">Only the group admin can manage join requests.</p>
+        <p className="text-sm text-muted-foreground">Join or create a group to see requests.</p>
       </div>
     </TabWrap>
   );
@@ -695,7 +686,8 @@ function RequestsTab() {
       {pendingRequests.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
           <UserCheck className="size-12 opacity-30" />
-          <p className="text-sm">No pending join requests</p>
+          <p className="text-sm font-medium">No pending join requests</p>
+          <p className="text-xs text-center opacity-70">Requests to join groups you admin will appear here</p>
         </div>
       ) : (
         <div className="space-y-3">

@@ -26,13 +26,13 @@ router.delete('/by-group/:groupId', ctrl.cancelRequestById);
 /** GET /api/join-requests/status?inviteCode=XXX — check own request status */
 router.get('/status', validate(joinRequestStatusSchema), ctrl.getMyRequest);
 
-/** GET /api/join-requests/pending — admin: list pending requests */
-router.get('/pending', requireGroup, requireAdmin, ctrl.listPending);
+/** GET /api/join-requests/pending — list pending requests for all groups I admin */
+router.get('/pending', requireGroup, ctrl.listPending);
 
-/** POST /api/join-requests/:id/approve — admin: approve */
-router.post('/:id/approve', requireGroup, requireAdmin, validate(joinRequestIdSchema), ctrl.approve);
+/** POST /api/join-requests/:id/approve — approve (caller must own that request's group) */
+router.post('/:id/approve', requireGroup, validate(joinRequestIdSchema), ctrl.approve);
 
-/** POST /api/join-requests/:id/reject — admin: reject */
-router.post('/:id/reject', requireGroup, requireAdmin, validate(joinRequestIdSchema), ctrl.reject);
+/** POST /api/join-requests/:id/reject — reject (caller must own that request's group) */
+router.post('/:id/reject', requireGroup, validate(joinRequestIdSchema), ctrl.reject);
 
 export default router;

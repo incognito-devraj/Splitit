@@ -78,12 +78,18 @@ export async function cancelRequestById(userId: string, groupId: string) {
   logger.info(`Join request cancelled: userId=${userId} groupId=${groupId}`);
 }
 
-/** Admin lists pending join requests for their group */
+/** Admin lists pending join requests for ALL groups they admin */
 export async function listPendingRequests(adminId: string) {
   const admin = await User.findById(adminId);
-  if (!admin?.groupId) throw new AppError('Not in a group', 403);
+  if (!admin) throw new AppError('User not found', 404);
 
-  return JoinRequest.find({ groupId: admin.groupId, status: 'pending' })
+  // Find all groups where this user is the admin
+  const adminedGroups = await Group.find({ adminId: new Types.ObjectId(adminId) }).select('_id').lean();
+  const groupIds = adminedGroups.map((g) => g._id);
+
+  if (groupIds.length === 0) return [];
+
+  return JoinRequest.find({ groupId: { $in: groupIds }, status: 'pending' })
     .populate('userId', 'name email avatar')
     .sort({ createdAt: 1 })
     .lean();
@@ -91,35 +97,34 @@ export async function listPendingRequests(adminId: string) {
 
 /** Admin approves a join request */
 export async function approveRequest(adminId: string, requestId: string) {
-  const admin = await User.findById(adminId);
-  if (!admin?.groupId) throw new AppError('Not in a group', 403);
-  if (admin.role !== 'admin') throw new AppError('Admin only', 403);
-
   const joinReq = await JoinRequest.findById(requestId);
-  if (!joinReq || joinReq.groupId.toString() !== admin.groupId.toString()) {
-    throw new AppError('Request not found', 404);
-  }
+  if (!joinReq) throw new AppError('Request not found', 404);
   if (joinReq.status !== 'pending') throw new AppError(`Request already ${joinReq.status}`, 409);
 
-  const group = await Group.findById(admin.groupId);
+  // Verify the caller is actually the admin of the group this request belongs to
+  const group = await Group.findById(joinReq.groupId);
   if (!group) throw new AppError('Group not found', 404);
+  if (group.adminId.toString() !== adminId) throw new AppError('You are not the admin of this group', 403);
 
   const targetUser = await User.findById(joinReq.userId);
   if (!targetUser) throw new AppError('User not found', 404);
 
-  // Add to group
+  // Add to group members
   const uid = new Types.ObjectId(joinReq.userId.toString());
   if (!group.members.some((m) => m.equals(uid))) {
     group.members.push(uid);
     await group.save();
   }
 
-  // Update user
-  targetUser.groupId = group._id;
+  // Update user's group membership
   if (!targetUser.groupIds.some((id) => id.equals(group._id))) {
     targetUser.groupIds.push(group._id);
   }
-  targetUser.role = 'member';
+  // Set as active group if they have none
+  if (!targetUser.groupId) {
+    targetUser.groupId = group._id;
+    targetUser.role = 'member';
+  }
   await targetUser.save();
 
   // Mark request approved
@@ -133,15 +138,14 @@ export async function approveRequest(adminId: string, requestId: string) {
 
 /** Admin rejects a join request */
 export async function rejectRequest(adminId: string, requestId: string) {
-  const admin = await User.findById(adminId);
-  if (!admin?.groupId) throw new AppError('Not in a group', 403);
-  if (admin.role !== 'admin') throw new AppError('Admin only', 403);
-
   const joinReq = await JoinRequest.findById(requestId);
-  if (!joinReq || joinReq.groupId.toString() !== admin.groupId.toString()) {
-    throw new AppError('Request not found', 404);
-  }
+  if (!joinReq) throw new AppError('Request not found', 404);
   if (joinReq.status !== 'pending') throw new AppError(`Request already ${joinReq.status}`, 409);
+
+  // Verify the caller is the admin of the group
+  const group = await Group.findById(joinReq.groupId).select('adminId').lean();
+  if (!group) throw new AppError('Group not found', 404);
+  if (group.adminId.toString() !== adminId) throw new AppError('You are not the admin of this group', 403);
 
   joinReq.status = 'rejected';
   joinReq.resolvedBy = new Types.ObjectId(adminId);
