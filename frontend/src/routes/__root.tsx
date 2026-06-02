@@ -48,10 +48,46 @@ function AuthGuard() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center theme-app-bg">
-        <div className="flex flex-col items-center gap-3">
-          <img src="/favicons/android-chrome-192x192.png" alt="Splitit" className="size-12 rounded-2xl shadow" />
-          <div className="size-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <div
+          className="flex flex-col items-center gap-5"
+          style={{ animation: "splashIn 0.5s cubic-bezier(0.16,1,0.3,1) both" }}
+        >
+          {/* Logo with gradient ring */}
+          <div className="relative">
+            <div
+              className="absolute inset-0 rounded-[28px] opacity-60"
+              style={{
+                background: "var(--gradient-primary)",
+                filter: "blur(18px)",
+                transform: "scale(1.15)",
+              }}
+            />
+            <img
+              src="/favicons/android-chrome-192x192.png"
+              alt="Splitit"
+              className="relative size-20 rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.18)]"
+            />
+          </div>
+          {/* Name + tagline */}
+          <div className="text-center" style={{ animation: "splashIn 0.55s 0.1s cubic-bezier(0.16,1,0.3,1) both" }}>
+            <div className="text-2xl font-bold tracking-tight text-foreground">Splitit</div>
+            <div className="text-sm text-muted-foreground mt-0.5">Split smarter, settle faster</div>
+          </div>
+          {/* Spinner */}
+          <div
+            className="size-5 border-2 border-primary/30 border-t-primary rounded-full"
+            style={{ animation: "spin 0.8s linear infinite" }}
+          />
         </div>
+        <style>{`
+          @keyframes splashIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     );
   }

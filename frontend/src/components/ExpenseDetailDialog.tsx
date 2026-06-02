@@ -73,7 +73,7 @@ export function ExpenseDetailDialog({
             {/* Backdrop */}
             <motion.button
               aria-label="Close expense details"
-              className="absolute inset-0 bg-black/55 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/55"
               onClick={onClose}
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             />

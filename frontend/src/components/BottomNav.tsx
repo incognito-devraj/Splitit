@@ -12,8 +12,8 @@ const leftTabs: Tab[] = [
 ];
 
 const rightTabs: Tab[] = [
-  { to: "/members", label: "Members", icon: Users },
-  { to: "/reports", label: "Reports", icon: BarChart3 },
+  { to: "/expenses", label: "Expenses", icon: Receipt },
+  { to: "/reports",  label: "Reports",  icon: BarChart3 },
 ];
 
 export function BottomNav() {

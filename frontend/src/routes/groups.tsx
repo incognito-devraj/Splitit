@@ -39,13 +39,13 @@ function GroupsPage() {
       </div>
 
       <div className="px-4 sm:px-6 mt-4">
-        <div className="flex rounded-2xl bg-card border border-border p-1 gap-1 overflow-x-auto no-scrollbar">
+        <div className="flex rounded-2xl bg-card border border-border p-1 gap-0.5 overflow-x-auto no-scrollbar">
           {tabs.map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex-1 min-w-0 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-semibold transition-all hover:-translate-y-0.5 whitespace-nowrap px-2 ${
+              className={`flex-1 min-w-0 flex items-center justify-center gap-1 py-2 rounded-xl text-[11px] font-semibold transition-all hover:-translate-y-0.5 whitespace-nowrap px-1.5 ${
                 tab === t.id ? "gradient-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}>
-              {t.icon} {t.label}
+              {t.icon} <span className="truncate">{t.label}</span>
             </button>
           ))}
         </div>
@@ -302,7 +302,7 @@ function GroupCard({
       <AnimatePresence>
         {showSettings && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
+            className="fixed inset-0 z-[70] bg-black/55 flex items-end sm:items-center justify-center p-4"
             onClick={() => setShowSettings(false)}>
             <motion.div initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}

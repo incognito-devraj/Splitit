@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Home, Receipt, Users, BarChart3, Settings, Plus, Layers, ChevronDown, Crown, Loader2, type LucideIcon } from "lucide-react";
+import { Home, Receipt, BarChart3, Settings, Plus, Layers, ChevronDown, Crown, Loader2, type LucideIcon } from "lucide-react";
 import { BottomNav } from "./BottomNav";
 import { AddExpenseSheet } from "./AddExpenseSheet";
 import { useSheet } from "@/lib/sheet";
@@ -25,7 +25,6 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Home", icon: Home },
   { to: "/groups", label: "Groups", icon: Layers },
   { to: "/expenses", label: "Expenses", icon: Receipt },
-  { to: "/members", label: "Members", icon: Users },
   { to: "/reports", label: "Reports", icon: BarChart3 },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
@@ -141,15 +140,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex-1 flex flex-col min-w-0">
           <MobileHeader />
           <main className="flex-1 w-full pb-28 lg:pb-8">
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25 }}
-              className="relative w-full px-4 sm:px-6 pt-10 pb-4"
-            >
+            <div className="page-enter relative w-full px-4 sm:px-6 pt-10 pb-4">
               <DesktopTopBar />
               {children}
-            </motion.div>
+            </div>
           </main>
         </div>
       </div>
