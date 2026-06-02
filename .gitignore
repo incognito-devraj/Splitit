@@ -1,0 +1,16 @@
+# ── Only frontend/ and backend/ are tracked ──────────────────────────────────
+
+# Ignore everything at root level by default
+/*
+
+# But keep these two folders
+!frontend/
+!backend/
+
+# And keep this .gitignore itself
+!.gitignore
+
+# ── Common noise ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log
