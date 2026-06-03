@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Share2, X, TrendingUp, Users, Receipt, Wallet, Copy, Check, UserMinus, Trash2, Calendar, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { CATEGORIES } from "@/lib/store";
-import { expenseApi, summaryApi, balanceApi, groupApi, settlementApi } from "@/lib/api/endpoints";
+import { expenseApi, summaryApi, balanceApi, groupApi } from "@/lib/api/endpoints";
 import { useAuth } from "@/lib/auth";
 import { QK } from "@/lib/queryKeys";
 import { cardVariants, SPRING, StaggerList } from "@/components/dashboard/MotionWrapper";
@@ -32,8 +32,6 @@ function avatarProps(id: string) {
 function Reports() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [settling, setSettling] = useState<string | null>(null);
-  const [settleAmt, setSettleAmt] = useState("");
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -93,16 +91,6 @@ function Reports() {
     queryFn: () => balanceApi.all().then((r) => r.data.data),
     enabled: !!activeGroupId,
     refetchInterval: 15_000,
-  });
-
-  const settleMutation = useMutation({
-    mutationFn: ({ toUserId, amt }: { toUserId: string; amt: number }) => settlementApi.request(toUserId, amt),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["balances"] });
-      qc.invalidateQueries({ queryKey: ["settlements"] });
-      qc.invalidateQueries({ queryKey: ["summary"] });
-      setSettling(null); setSettleAmt("");
-    },
   });
 
   const removeMutation = useMutation({
@@ -365,34 +353,6 @@ function Reports() {
                     )}
                   </div>
                 </div>
-                {!isMe && !settled && (
-                  <div className="px-3 pb-3">
-                    <AnimatePresence mode="wait">
-                      {settling === b.userId ? (
-                        <motion.div key="form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="flex gap-2">
-                          <input type="number" value={settleAmt} onChange={(e) => setSettleAmt(e.target.value)}
-                            placeholder={`₹${Math.abs(b.netBalance).toFixed(0)}`} autoFocus
-                            className="flex-1 h-8 px-3 rounded-xl bg-background border border-border text-sm focus:outline-none focus:border-primary" />
-                          <button onClick={() => settleMutation.mutate({ toUserId: b.userId, amt: Number(settleAmt) || Math.abs(b.netBalance) })}
-                            disabled={settleMutation.isPending}
-                            className="px-3 h-8 rounded-xl gradient-primary text-primary-foreground text-xs font-semibold disabled:opacity-50">
-                            {settleMutation.isPending ? "…" : "Send"}
-                          </button>
-                          <button onClick={() => { setSettling(null); setSettleAmt(""); }} className="size-8 rounded-xl bg-muted grid place-items-center">
-                            <X className="size-3.5" />
-                          </button>
-                        </motion.div>
-                      ) : (
-                        <motion.button key="btn" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                          whileTap={{ scale: 0.97 }}
-                          onClick={() => { setSettling(b.userId); setSettleAmt(Math.abs(b.netBalance).toFixed(0)); }}
-                          className="w-full h-8 rounded-xl border border-primary/30 bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/15 transition-colors">
-                          💸 Settle · ₹{Math.abs(b.netBalance).toFixed(0)}
-                        </motion.button>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
               </motion.div>
             );
           })}
