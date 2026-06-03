@@ -36,10 +36,13 @@ function AuthGuard() {
       return;
     }
     if (isAuthenticated && pathname === "/login") {
-      navigate({ to: user?.groupId ? "/" : "/onboarding" });
+      const hasAnyGroup = !!(user?.groupId || (user?.groupIds && user.groupIds.length > 0));
+      navigate({ to: hasAnyGroup ? "/" : "/onboarding" });
       return;
     }
-    if (isAuthenticated && !user?.groupId && !isPublic && !NO_GROUP_ROUTES.some((r) => pathname.startsWith(r))) {
+    // Only redirect to onboarding if user has no groups at all
+    const hasAnyGroup = !!(user?.groupId || (user?.groupIds && user.groupIds.length > 0));
+    if (isAuthenticated && !hasAnyGroup && !isPublic && !NO_GROUP_ROUTES.some((r) => pathname.startsWith(r))) {
       navigate({ to: "/onboarding" });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

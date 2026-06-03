@@ -260,15 +260,22 @@ function GroupCard({
 
               {/* Members */}
               <div className="space-y-1.5">
-                {(group.members ?? []).slice(0, 5).map((m) => (
-                  <div key={m._id} className="flex items-center gap-2 p-2 rounded-xl bg-muted/40">
-                    <div className="size-7 rounded-full bg-muted overflow-hidden grid place-items-center text-xs shrink-0">
-                      {m.avatar ? <img src={m.avatar} alt={m.name} className="size-full object-cover" /> : "👤"}
+                {(group.members ?? []).slice(0, 5).map((m) => {
+                  const memberIsAdmin = typeof group.adminId === "object"
+                    ? (group.adminId as { _id: string })._id === m._id
+                    : group.adminId === m._id;
+                  return (
+                    <div key={m._id} className="flex items-center gap-2 p-2 rounded-xl bg-muted/40">
+                      <div className="size-7 rounded-full bg-muted overflow-hidden grid place-items-center text-xs shrink-0">
+                        {m.avatar ? <img src={m.avatar} alt={m.name} className="size-full object-cover" /> : "👤"}
+                      </div>
+                      <span className="text-sm font-medium flex-1 truncate">{m.name}{m._id === currentUserId ? " (you)" : ""}</span>
+                      {memberIsAdmin
+                        ? <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/20 shrink-0">Admin</span>
+                        : <span className="text-xs text-muted-foreground shrink-0">Member</span>}
                     </div>
-                    <span className="text-sm font-medium flex-1 truncate">{m.name}{m._id === currentUserId ? " (you)" : ""}</span>
-                    <span className="text-xs text-muted-foreground capitalize">{m.role}</span>
-                  </div>
-                ))}
+                  );
+                })}
                 {(group.members ?? []).length > 5 && (
                   <p className="text-xs text-muted-foreground text-center">+{group.members.length - 5} more</p>
                 )}
