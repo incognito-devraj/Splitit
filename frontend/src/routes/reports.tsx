@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Share2, X, TrendingUp, Users, Receipt, Wallet, Copy, Check, UserMinus } from "lucide-react";
+import { Share2, X, TrendingUp, Users, Receipt, Wallet, Copy, Check, UserMinus, Trash2, Calendar, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { CATEGORIES } from "@/lib/store";
 import { expenseApi, summaryApi, balanceApi, groupApi, settlementApi } from "@/lib/api/endpoints";
@@ -10,7 +10,6 @@ import { useAuth } from "@/lib/auth";
 import { QK } from "@/lib/queryKeys";
 import { cardVariants, SPRING, StaggerList } from "@/components/dashboard/MotionWrapper";
 import { CHART_COLORS } from "@/components/dashboard/SpendingCharts";
-import { AdminControls } from "@/components/AdminControls";
 
 const RechartsCharts = lazy(() => import("@/components/dashboard/RechartsCharts"));
 
@@ -33,11 +32,29 @@ function avatarProps(id: string) {
 function Reports() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [showFull, setShowFull] = useState(false);
   const [settling, setSettling] = useState<string | null>(null);
   const [settleAmt, setSettleAmt] = useState("");
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // ── Admin report/clear state ──────────────────────────────────────────────
+  type AdminStep = "idle" | "date-picker" | "preview";
+  const [adminStep, setAdminStep] = useState<AdminStep>("idle");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [reportText, setReportText] = useState("");
+  const [reportShared, setReportShared] = useState(false);
+  const [showClearDialog, setShowClearDialog] = useState(false);
+  const [adminError, setAdminError] = useState<string | null>(null);
+  const [adminSuccess, setAdminSuccess] = useState<string | null>(null);
+
+  function showAdminError(msg: string) { setAdminError(msg); setTimeout(() => setAdminError(null), 5000); }
+  function showAdminSuccess(msg: string) { setAdminSuccess(msg); setTimeout(() => setAdminSuccess(null), 4000); }
+
+  function fmtDate(d: string) {
+    return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  }
+  function fmt(n: number) { return `₹${n.toLocaleString("en-IN")}`; }
   const activeGroupId = user?.groupId ?? null;
 
   const { data: group } = useQuery({
@@ -98,6 +115,77 @@ function Reports() {
     },
   });
 
+  // ── Admin: generate report ────────────────────────────────────────────────
+  const generateMutation = useMutation({
+    mutationFn: async () => {
+      const [expRes, sumRes] = await Promise.all([
+        expenseApi.list({ limit: 500 }),
+        summaryApi.get(),
+      ]);
+      const allExp = expRes.data.data ?? [];
+      const s = sumRes.data.data;
+      const from = fromDate ? new Date(fromDate) : null;
+      const to = toDate ? new Date(toDate + "T23:59:59") : null;
+      const filtered = allExp.filter((e) => {
+        const d = new Date(e.createdAt);
+        if (from && d < from) return false;
+        if (to && d > to) return false;
+        return true;
+      });
+      if (filtered.length === 0 && !from && !to) throw new Error("No expenses found.");
+      const periodLabel = from || to
+        ? `${from ? fmtDate(fromDate) : "beginning"} – ${to ? fmtDate(toDate) : "today"}`
+        : "All time";
+      let r = `📊 *${s.groupName ?? "Group"} — Expense Report*\n`;
+      r += `📅 Period: ${periodLabel}\n`;
+      r += `💰 Total Spent: ${fmt(s.totalAmount)}\n`;
+      r += `🧾 Total Expenses: ${s.totalExpenses}\n\n── Balances ──\n`;
+      for (const b of s.summary ?? []) r += `${b.action === "receives" ? "✅" : "🔴"} ${b.name} ${b.action} ${fmt(b.amount)}\n`;
+      if ((s.summary ?? []).length === 0) r += `✅ All settled up!\n`;
+      r += `\n── Expenses ──\n`;
+      const sorted = [...filtered].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      for (const e of sorted) {
+        const parts = [...(e.sharedWith ?? []).map((u) => u.name), ...(e.guestParticipants ?? []).map((g) => g.name)];
+        r += `${fmtDate(e.createdAt)} — ${e.paidBy?.name ?? "?"} paid ${fmt(e.amount)} for ${e.title || e.category}\n`;
+        if (parts.length) r += `  Split among: ${parts.join(", ")}\n`;
+      }
+      r += `\n_Powered by Splitit_`;
+      return r;
+    },
+    onSuccess: (text) => { setReportText(text); setAdminStep("preview"); },
+    onError: (e: any) => { showAdminError(e?.message ?? "Failed to generate report."); setAdminStep("idle"); },
+  });
+
+  const clearMutation = useMutation({
+    mutationFn: () => groupApi.clearExpenses(),
+    onSuccess: () => {
+      setShowClearDialog(false); setReportShared(false); setReportText(""); setAdminStep("idle");
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      qc.invalidateQueries({ queryKey: ["balances"] });
+      qc.invalidateQueries({ queryKey: ["settlements"] });
+      qc.invalidateQueries({ queryKey: ["summary"] });
+      showAdminSuccess("All expense records cleared.");
+    },
+    onError: (e: any) => { setShowClearDialog(false); showAdminError(e?.response?.data?.message ?? "Failed to clear."); },
+  });
+
+  async function handleAdminShare() {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Expense Report", text: reportText });
+      } else {
+        await navigator.clipboard.writeText(reportText);
+        showAdminSuccess("Report copied to clipboard.");
+      }
+      setReportShared(true);
+      showAdminSuccess("Report shared! Clear Expenses is now unlocked.");
+    } catch (e: any) {
+      if (e?.name === "AbortError") return;
+      try { await navigator.clipboard.writeText(reportText); setReportShared(true); showAdminSuccess("Copied to clipboard."); }
+      catch { showAdminError("Could not share. Please copy manually."); }
+    }
+  }
+
   const copyCode = () => {
     if (group?.inviteCode) {
       navigator.clipboard.writeText(group.inviteCode);
@@ -125,11 +213,6 @@ function Reports() {
   const topCats = catData.slice(0, 6);
   const maxCat = catData[0]?.total ?? 1;
 
-  const shareWhatsApp = () => {
-    if (!summary?.whatsappText) return;
-    window.open(`https://wa.me/?text=${encodeURIComponent(summary.whatsappText)}`, "_blank");
-  };
-
   const kpis = [
     { label: "Total Spent",  value: `₹${(summary?.totalAmount ?? 0).toLocaleString("en-IN")}`, icon: Wallet,    tint: "oklch(0.72 0.18 155)" },
     { label: "Expenses",     value: summary?.totalExpenses ?? 0,                                icon: Receipt,   tint: "oklch(0.68 0.20 245)" },
@@ -145,8 +228,8 @@ function Reports() {
         <p className="text-sm text-muted-foreground mt-0.5">Spending overview &amp; analytics</p>
       </div>
 
-      {/* KPI row */}
-      <StaggerList className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      {/* KPI row — always 4 columns, compact cards */}
+      <StaggerList className="grid grid-cols-4 gap-2 sm:gap-3 mb-4">
         {kpis.map((k, i) => {
           const Icon = k.icon;
           return (
@@ -154,36 +237,76 @@ function Reports() {
               key={k.label}
               variants={cardVariants}
               transition={{ ...SPRING, delay: i * 0.07 }}
-              className="rounded-2xl bg-card border border-border p-4 shadow-[0_1px_2px_rgba(0,0,0,.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,.08)] transition-shadow duration-200"
+              className="rounded-2xl bg-card border border-border p-3 shadow-[0_1px_2px_rgba(0,0,0,.04)] hover:shadow-[0_6px_18px_rgba(0,0,0,.07)] transition-shadow duration-200"
             >
-              <div
-                className="size-9 rounded-xl grid place-items-center mb-3"
-                style={{ background: `color-mix(in oklab, ${k.tint} 18%, transparent)` }}
-              >
-                <Icon className="size-4" style={{ color: k.tint }} />
+              <div className="size-7 rounded-lg grid place-items-center mb-2"
+                style={{ background: `color-mix(in oklab, ${k.tint} 18%, transparent)` }}>
+                <Icon className="size-3.5" style={{ color: k.tint }} />
               </div>
               {isLoading
-                ? <div className="h-7 w-20 bg-muted rounded animate-pulse" />
-                : <div className="text-xl font-bold tabular">{k.value}</div>}
-              <div className="text-xs text-muted-foreground mt-0.5">{k.label}</div>
+                ? <div className="h-5 w-12 bg-muted rounded animate-pulse" />
+                : <div className="text-sm font-bold tabular leading-tight">{k.value}</div>}
+              <div className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{k.label}</div>
             </motion.div>
           );
         })}
       </StaggerList>
 
-      {/* Share Report button */}
+      {/* ── Action buttons row — Share Report + Clear Expenses (admin only) ── */}
       <motion.div
         variants={cardVariants} initial="hidden" animate="visible"
         transition={{ ...SPRING, delay: 0.1 }}
-        className="flex justify-center mb-5"
+        className="mb-5"
       >
-        <motion.button
-          whileTap={{ scale: 0.96 }} whileHover={{ y: -2 }}
-          onClick={() => setShowFull(true)}
-          className="h-10 px-6 rounded-xl gradient-primary text-primary-foreground text-sm font-semibold font-sans flex items-center gap-2 shadow-[0_4px_14px_rgba(0,0,0,0.12)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.18)] transition-all"
-        >
-          <Share2 className="size-4" /> Share Full Report
-        </motion.button>
+        <div className={`flex gap-2 ${isAdmin ? "" : "justify-center"}`}>
+          {/* Share Full Report — always visible */}
+          <button
+            onClick={() => setAdminStep("date-picker")}
+            disabled={generateMutation.isPending}
+            className={`${isAdmin ? "flex-1" : "h-10 px-6"} h-10 rounded-xl gradient-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(0,0,0,0.12)] hover:shadow-[0_6px_18px_rgba(0,0,0,0.18)] hover:-translate-y-0.5 active:scale-95 transition-all disabled:opacity-50`}
+          >
+            {generateMutation.isPending
+              ? <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              : <Share2 className="size-4" />}
+            <span className="truncate">{generateMutation.isPending ? "Generating…" : "Share Report"}</span>
+          </button>
+
+          {/* Clear All Expenses — admin only */}
+          {isAdmin && (
+            <button
+              onClick={() => {
+                if (!reportShared) { showAdminError("Share the expense report first to unlock this."); return; }
+                setShowClearDialog(true);
+              }}
+              disabled={clearMutation.isPending}
+              className={`flex-1 h-10 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 border ${
+                reportShared
+                  ? "bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/15"
+                  : "bg-muted/60 text-muted-foreground border-border cursor-default"
+              }`}
+            >
+              <Trash2 className="size-4 shrink-0" />
+              <span className="truncate">Clear Expenses</span>
+            </button>
+          )}
+        </div>
+
+        {/* Hint / feedback */}
+        {isAdmin && !reportShared && !adminError && !adminSuccess && (
+          <p className="mt-1.5 text-[11px] text-muted-foreground text-center">
+            Share the report first to unlock Clear Expenses
+          </p>
+        )}
+        {adminError && (
+          <div className="mt-2 flex items-center gap-2 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400">
+            <AlertTriangle className="size-3.5 shrink-0" /> {adminError}
+          </div>
+        )}
+        {adminSuccess && (
+          <div className="mt-2 flex items-center gap-2 p-2.5 rounded-xl bg-green-500/10 border border-green-500/20 text-xs text-green-400">
+            <CheckCircle2 className="size-3.5 shrink-0" /> {adminSuccess}
+          </div>
+        )}
       </motion.div>
 
       {/* ── Members & Balances ────────────────────────────────────────────── */}
@@ -275,11 +398,6 @@ function Reports() {
           })}
         </div>
       </motion.div>
-
-      {/* Admin Controls */}
-      <div className="mb-4">
-        <AdminControls isAdmin={isAdmin} compact />
-      </div>
 
       {/* Remove member confirmation */}
       <AnimatePresence>
@@ -426,115 +544,134 @@ function Reports() {
         </div>
       </motion.div>
 
-      {/* Full Report Dialog — full screen mobile, centered modal desktop */}
+      {/* ── Date Picker Dialog ── */}
       <AnimatePresence>
-        {showFull && (
+        {adminStep === "date-picker" && (
           <>
-            {/* Backdrop */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] bg-black/55" onClick={() => setAdminStep("idle")} />
             <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[60] bg-black/55"
-              onClick={() => setShowFull(false)}
-            />
-
-            {/* Panel: slides up from bottom on mobile, scales in centered on sm+ */}
-            <motion.div
-              initial={{ opacity: 0, y: "100%" }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 320 }}
-              className={[
-                "fixed z-[61] bg-background flex flex-col",
-                // Mobile: full screen, anchored to bottom
-                "inset-x-0 bottom-0 top-0",
-                // sm+: centered modal with max dimensions
-                "sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2",
-                "sm:w-full sm:max-w-lg sm:max-h-[88vh]",
-                "sm:rounded-3xl sm:border sm:border-border sm:shadow-[0_24px_60px_rgba(0,0,0,0.25)]",
-              ].join(" ")}
+              initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }}
+              transition={{ type: "spring", damping: 26, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="fixed inset-x-4 bottom-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-sm z-[61] bg-background rounded-3xl border border-border shadow-[0_20px_60px_rgba(0,0,0,0.25)] p-6"
             >
-              {/* Header */}
-              <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-border shrink-0">
+              <div className="flex items-center justify-between mb-5">
                 <div>
-                  <h2 className="text-lg font-bold tracking-tight">Full Report</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">{summary?.groupName ?? "Group summary"}</p>
+                  <h3 className="font-bold text-base">Select Period</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Leave blank for all time</p>
                 </div>
-                <button
-                  onClick={() => setShowFull(false)}
-                  aria-label="Close"
-                  className="size-9 rounded-full bg-muted grid place-items-center hover:bg-primary/10 transition-colors shrink-0"
-                >
+                <button onClick={() => setAdminStep("idle")} className="size-8 rounded-full bg-muted grid place-items-center hover:bg-primary/10 transition-colors">
+                  <X className="size-3.5" />
+                </button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1.5">From</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+                    <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} max={toDate || undefined}
+                      className="w-full h-10 pl-9 pr-3 rounded-xl bg-muted/50 border border-border text-sm focus:outline-none focus:border-primary" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground block mb-1.5">To</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+                    <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} min={fromDate || undefined}
+                      className="w-full h-10 pl-9 pr-3 rounded-xl bg-muted/50 border border-border text-sm focus:outline-none focus:border-primary" />
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-5">
+                <button onClick={() => setAdminStep("idle")} className="flex-1 h-11 rounded-2xl bg-muted text-sm font-semibold hover:bg-muted/70 transition-colors">Cancel</button>
+                <button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending}
+                  className="flex-1 h-11 rounded-2xl gradient-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60 active:scale-95 transition-all">
+                  {generateMutation.isPending
+                    ? <><span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Generating…</>
+                    : "Generate Report"}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Report Preview Dialog ── */}
+      <AnimatePresence>
+        {adminStep === "preview" && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] bg-black/55" onClick={() => setAdminStep("idle")} />
+            <motion.div
+              initial={{ opacity: 0, y: "100%" }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="fixed z-[61] bg-background flex flex-col inset-x-0 bottom-0 h-[90dvh] sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-lg sm:h-auto sm:max-h-[88vh] rounded-t-3xl sm:rounded-3xl border border-border shadow-[0_24px_60px_rgba(0,0,0,0.3)]"
+            >
+              <div className="w-10 h-1 bg-border rounded-full mx-auto mt-3 sm:hidden shrink-0" />
+              <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border shrink-0">
+                <div>
+                  <h3 className="font-bold text-base">Expense Report</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {fromDate || toDate ? `${fromDate ? fmtDate(fromDate) : "Start"} – ${toDate ? fmtDate(toDate) : "Today"}` : "All time"}
+                  </p>
+                </div>
+                <button onClick={() => setAdminStep("idle")} className="size-9 rounded-full bg-muted grid place-items-center hover:bg-primary/10 transition-colors">
                   <X className="size-4" />
                 </button>
               </div>
-
-              {/* Scrollable body */}
-              <div className="flex-1 overflow-y-auto px-5 pt-4 pb-4 space-y-4 overscroll-contain">
-                {/* Totals */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl p-4 bg-card border border-border">
-                    <div className="text-xs text-muted-foreground">Total expenses</div>
-                    <div className="text-2xl font-bold tabular mt-1">{summary?.totalExpenses ?? 0}</div>
+              <div className="flex-1 overflow-y-auto overscroll-contain px-5 pt-4 pb-2">
+                <pre className="text-sm text-foreground whitespace-pre-wrap font-sans leading-relaxed bg-muted/40 rounded-2xl p-4">{reportText}</pre>
+              </div>
+              <div className="shrink-0 px-5 py-4 border-t border-border space-y-2">
+                {reportShared && (
+                  <div className="flex items-center gap-2 text-xs text-green-400 justify-center pb-1">
+                    <CheckCircle2 className="size-3.5" /> Report shared — Clear Expenses is now unlocked
                   </div>
-                  <div className="rounded-2xl p-4 bg-card border border-border">
-                    <div className="text-xs text-muted-foreground">Total amount</div>
-                    <div className="text-2xl font-bold tabular text-gradient mt-1">
-                      ₹{(summary?.totalAmount ?? 0).toLocaleString("en-IN")}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Per member */}
-                <div className="rounded-2xl p-4 bg-card border border-border">
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-3 font-semibold">Per member</div>
-                  <div className="space-y-2">
-                    {(summary?.balances ?? []).map((b) => (
-                      <div
-                        key={b.userId}
-                        className="flex items-center justify-between text-sm p-2 rounded-xl hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="size-8 rounded-full bg-muted overflow-hidden grid place-items-center shrink-0">
-                            {b.avatar
-                              ? <img src={b.avatar} alt={b.name} className="size-full object-cover" />
-                              : <span className="text-xs font-bold">{b.name[0]}</span>}
-                          </div>
-                          <span className="font-medium truncate">{b.name}</span>
-                        </div>
-                        <div className="text-right shrink-0 ml-2">
-                          <div className={`tabular font-bold text-sm ${b.netBalance >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                            {b.netBalance >= 0 ? "+" : "−"}₹{Math.abs(b.netBalance).toFixed(0)}
-                          </div>
-                          <div className="text-[10px] text-muted-foreground">
-                            paid ₹{b.totalPaid.toFixed(0)} · owes ₹{b.totalOwed.toFixed(0)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {(summary?.balances ?? []).length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-3">No members yet</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* WhatsApp message preview */}
-                <div className="rounded-2xl p-4 bg-card border border-border">
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2 font-semibold">
-                    Message Preview
-                  </div>
-                  <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-sans leading-relaxed bg-muted/40 rounded-xl p-3">
-                    {summary?.whatsappText}
-                  </pre>
+                )}
+                <div className="flex gap-2">
+                  <button onClick={() => setAdminStep("idle")} className="flex-1 h-11 rounded-2xl bg-muted text-sm font-semibold hover:bg-muted/70 transition-colors">Close</button>
+                  <button onClick={handleAdminShare} className="flex-1 h-11 rounded-2xl gradient-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-2 active:scale-95 transition-all">
+                    <Share2 className="size-4" /> {reportShared ? "Share Again" : "Share Report"}
+                  </button>
                 </div>
               </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
-              {/* Sticky footer action */}
-              <div className="shrink-0 px-5 py-4 border-t border-border">
-                <button
-                  onClick={shareWhatsApp}
-                  className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground font-semibold font-sans flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(0,0,0,0.12)] active:scale-[0.98] transition-transform"
-                >
-                  <Share2 className="size-4" /> Share to WhatsApp
+      {/* ── Clear Confirmation ── */}
+      <AnimatePresence>
+        {showClearDialog && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[70] bg-black/55" onClick={() => setShowClearDialog(false)} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="fixed z-[71] inset-x-4 bottom-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-sm bg-background rounded-3xl border border-border p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="size-11 rounded-2xl bg-red-500/15 grid place-items-center shrink-0">
+                  <Trash2 className="size-5 text-red-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base">Clear All Expenses?</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">This cannot be undone</p>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground mb-5 leading-relaxed">
+                Permanently deletes all expenses, settlements, and audit records. Group, members, and accounts stay intact.
+              </p>
+              <div className="flex gap-2">
+                <button onClick={() => setShowClearDialog(false)} className="flex-1 h-11 rounded-2xl bg-muted text-sm font-semibold hover:bg-muted/70 transition-colors">Cancel</button>
+                <button onClick={() => clearMutation.mutate()} disabled={clearMutation.isPending}
+                  className="flex-1 h-11 rounded-2xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60 active:scale-95 transition-all">
+                  {clearMutation.isPending
+                    ? <><span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Clearing…</>
+                    : "Yes, Clear All"}
                 </button>
               </div>
             </motion.div>
