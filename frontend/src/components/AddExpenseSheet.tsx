@@ -405,7 +405,14 @@ function StepMembers({
   const total = selected.length + validGuests.length;
 
   return (
-    <StepWrap>
+    <motion.div
+      initial={{ opacity: 0, x: 24 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -24 }}
+      transition={{ duration: 0.18, ease: "easeInOut" }}
+      className="absolute inset-0 flex flex-col px-5 py-3"
+    >
+      {/* Header — fixed, never scrolls */}
       <div className="flex items-center justify-between shrink-0 mb-2">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">Split with</h2>
@@ -422,8 +429,8 @@ function StepMembers({
         </button>
       </div>
 
-      {/* Members list — flex fills remaining space */}
-      <div className="flex-1 flex flex-col gap-1.5 overflow-hidden">
+      {/* Scrollable list — members + guest inputs */}
+      <div className="flex-1 overflow-y-auto overscroll-contain min-h-0 flex flex-col gap-1.5 pr-0.5">
         {members.map((m) => {
           const active = selected.includes(m._id);
           return (
@@ -431,7 +438,7 @@ function StepMembers({
               key={m._id}
               whileTap={{ scale: 0.98 }}
               onClick={() => toggle(m._id)}
-              className={`flex items-center gap-3 p-2.5 rounded-2xl border transition-colors ${
+              className={`flex items-center gap-3 p-2.5 rounded-2xl border transition-colors shrink-0 ${
                 active ? "bg-primary/10 border-primary/30" : "bg-muted/30 border-border"
               }`}
             >
@@ -456,7 +463,7 @@ function StepMembers({
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
+              className="overflow-hidden shrink-0"
             >
               <div className="flex items-center gap-2 pt-1">
                 <div className="size-9 rounded-full bg-amber-500/15 grid place-items-center text-base shrink-0">👤</div>
@@ -483,13 +490,14 @@ function StepMembers({
         )}
       </div>
 
+      {/* Continue button — always visible at bottom */}
       <motion.button
         whileTap={{ scale: 0.97 }} disabled={total === 0} onClick={onNext}
         className="mt-2 shrink-0 w-full h-11 rounded-2xl gradient-primary text-primary-foreground font-semibold text-sm disabled:opacity-40"
       >
         Continue · {total} participant{total !== 1 ? "s" : ""}
       </motion.button>
-    </StepWrap>
+    </motion.div>
   );
 }
 

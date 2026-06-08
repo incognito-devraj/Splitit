@@ -136,11 +136,11 @@ export async function listExpenses(
   ]);
 
   // Normalise soft-delete fields — old documents won't have them set in MongoDB
-  const expenses = rawExpenses.map((e) => ({
-    ...e,
-    isDeleted: e.isDeleted ?? false,
-    deletedAt: e.deletedAt ?? null,
-  }));
+  const expenses = rawExpenses.map((e) => {
+    (e as Record<string, unknown>)['isDeleted'] = (e.isDeleted ?? false);
+    (e as Record<string, unknown>)['deletedAt'] = (e.deletedAt ?? null);
+    return e;
+  });
 
   return { expenses, pagination: paginate(total, page, limit) };
 }
@@ -227,7 +227,8 @@ export async function updateExpense(
     newData:   expense.toObject(),
   });
 
-  return populateExpense(expenseId);
+  const updated = await populateExpense(expenseId);
+  return updated ? normaliseExpense(updated) : updated;
 }
 
 // ─── Soft Delete ─────────────────────────────────────────────────────────────
