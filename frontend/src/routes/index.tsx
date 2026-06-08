@@ -55,8 +55,11 @@ function Dashboard() {
   const toCollect = Math.max(netBalance, 0);
   const toPay = Math.max(-netBalance, 0);
   const allExpenses = Array.isArray(expensesData) ? expensesData : [];
-  const recentExpenses = allExpenses.slice(0, 5);
-  const totalSpent = allExpenses.reduce((s, e) => s + e.amount, 0);
+  const recentExpenses = allExpenses.filter((e) => !e.isDeleted).slice(0, 5);
+  const totalSpent = allExpenses.filter((e) => !e.isDeleted).reduce((s, e) => s + e.amount, 0);
+  const myExpenses = allExpenses.filter((e) => e.paidBy?._id === user?._id && !e.isDeleted);
+  const myTotalSpent = myExpenses.reduce((s, e) => s + e.amount, 0);
+  const myExpenseCount = myExpenses.length;
   const memberCount = groupData?.members?.length ?? balances.length;
 
   // Monthly trend — last 6 months in chronological order (oldest → newest)
@@ -125,6 +128,8 @@ function Dashboard() {
             toPay={toPay}
             totalSpent={totalSpent}
             expenseCount={allExpenses.length}
+            myTotalSpent={myTotalSpent}
+            myExpenseCount={myExpenseCount}
             isLoading={balLoading}
           />
 

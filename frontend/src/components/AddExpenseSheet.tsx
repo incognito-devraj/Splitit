@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Check, Delete, X, ChevronDown, Plus, UserX } from "lucide-react";
+import { ArrowLeft, Check, Delete, X, ChevronDown, Plus, UserX, Share2, Copy, CheckCheck } from "lucide-react";
 import confetti from "canvas-confetti";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSheet } from "@/lib/sheet";
@@ -107,7 +107,7 @@ export function AddExpenseSheet() {
       });
       setStep(4);
       setTimeout(() => confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 }, scalar: 0.9 }), 200);
-      setTimeout(() => closeSheet(), 1800);
+      // No auto-close — user closes after optionally sharing
     } catch { /* shown via mutation state */ }
   };
 
@@ -199,7 +199,19 @@ export function AddExpenseSheet() {
                     error={createMutation.isError ? "Failed to save. Try again." : ""}
                   />
                 )}
-                {step === 4 && <StepSuccess key="s4" amount={amountNum} />}
+                {step === 4 && (
+                  <StepSuccess
+                    key="s4"
+                    amount={amountNum}
+                    title={title.trim()}
+                    category={category!}
+                    paidByName={paidByMember?.name ?? user?.name ?? "You"}
+                    memberNames={members.filter((m) => selected.includes(m._id)).map((m) => m.name)}
+                    guestNames={validGuests}
+                    perHead={perHead}
+                    onClose={closeSheet}
+                  />
+                )}
               </AnimatePresence>
             </div>
           </motion.div>
@@ -539,42 +551,181 @@ function StepPreview({
 
 // ─── Step 4: Success ──────────────────────────────────────────────────────────
 
-function StepSuccess({ amount }: { amount: number }) {
+function buildShareText({
+  title, amount, category, paidByName, memberNames, guestNames, perHead,
+}: {
+  title: string; amount: number; category: Category;
+  paidByName: string; memberNames: string[]; guestNames: string[]; perHead: number;
+}) {
+  const cat = CATEGORIES.find((c) => c.id === category)!;
+  const allParticipants = [...memberNames, ...guestNames];
+  const total = allParticipants.length;
+  const lines: string[] = [];
+
+  lines.push(`${cat.emoji}  ${title}`);
+  lines.push(`─────────────────────`);
+  lines.push(`💰  Total    : ₹${amount.toLocaleString("en-IN")}`);
+  lines.push(`👤  Paid by  : ${paidByName}`);
+  lines.push(`📂  Category : ${cat.label}`);
+  lines.push(``);
+  lines.push(`👥  Split among ${total} ${total === 1 ? "person" : "people"}:`);
+  allParticipants.forEach((name, i) => {
+    lines.push(`    ${i + 1}. ${name}`);
+  });
+  lines.push(``);
+  lines.push(`💸  Each pays: ₹${perHead.toFixed(2)}`);
+  lines.push(`─────────────────────`);
+  lines.push(`Shared via Splitit 🧾`);
+
+  return lines.join("\n");
+}
+
+function StepSuccess({
+  amount, title, category, paidByName, memberNames, guestNames, perHead, onClose,
+}: {
+  amount: number; title: string; category: Category;
+  paidByName: string; memberNames: string[]; guestNames: string[];
+  perHead: number; onClose: () => void;
+}) {
+  const [showShare, setShowShare] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const cat = CATEGORIES.find((c) => c.id === category)!;
+  const shareText = buildShareText({ title, amount, category, paidByName, memberNames, guestNames, perHead });
+
+  // Show the tick for 900ms, then slide up the share card
+  useEffect(() => {
+    const t = setTimeout(() => setShowShare(true), 900);
+    return () => clearTimeout(t);
+  }, []);
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Expense: ${title}`, text: shareText });
+      } catch {
+        // user cancelled — fine
+      }
+    } else {
+      await navigator.clipboard.writeText(shareText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-      className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-5"
+      className="absolute inset-0 flex flex-col items-center justify-start overflow-hidden"
     >
+      {/* ── Tick section ── */}
       <motion.div
-        initial={{ scale: 0.5, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 260, damping: 16 }}
-        className="size-24 rounded-full gradient-success grid place-items-center shadow-[var(--shadow-glow)]"
+        animate={showShare ? { y: -16, scale: 0.82 } : { y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 260, damping: 26 }}
+        className="flex flex-col items-center gap-3 pt-10"
       >
         <motion.div
-          initial={{ scale: 0, rotate: -20 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", stiffness: 320, damping: 16, delay: 0.1 }}
-          className="size-14 rounded-full bg-white grid place-items-center shadow-[0_8px_24px_rgba(0,0,0,0.16)]"
+          initial={{ scale: 0.5, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 260, damping: 16 }}
+          className="size-24 rounded-full gradient-success grid place-items-center shadow-[var(--shadow-glow)]"
         >
-          <motion.svg viewBox="0 0 24 24" className="size-9 text-emerald-500">
-            <motion.path
-              d="M5 12 L10 17 L19 7" fill="none" stroke="currentColor"
-              strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round"
-              initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
-              transition={{ duration: 0.35, delay: 0.22 }}
-            />
-          </motion.svg>
+          <motion.div
+            initial={{ scale: 0, rotate: -20 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 320, damping: 16, delay: 0.1 }}
+            className="size-14 rounded-full bg-white grid place-items-center shadow-[0_8px_24px_rgba(0,0,0,0.16)]"
+          >
+            <motion.svg viewBox="0 0 24 24" className="size-9 text-emerald-500">
+              <motion.path
+                d="M5 12 L10 17 L19 7" fill="none" stroke="currentColor"
+                strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round"
+                initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
+                transition={{ duration: 0.35, delay: 0.22 }}
+              />
+            </motion.svg>
+          </motion.div>
         </motion.div>
+        <div className="text-center">
+          <motion.h3
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+            className="text-2xl font-semibold"
+          >
+            Expense added!
+          </motion.h3>
+          <motion.p
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
+            className="text-muted-foreground mt-1 text-sm"
+          >
+            ₹{amount.toLocaleString("en-IN")} split with your group
+          </motion.p>
+        </div>
       </motion.div>
-      <div className="text-center">
-        <motion.h3 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-          className="text-2xl font-semibold">Expense added!</motion.h3>
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
-          className="text-muted-foreground mt-1">
-          ₹{amount.toLocaleString("en-IN")} split with your group
-        </motion.p>
-      </div>
+
+      {/* ── Share card — slides up after tick ── */}
+      <AnimatePresence>
+        {showShare && (
+          <motion.div
+            initial={{ opacity: 0, y: 60 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 60 }}
+            transition={{ type: "spring", stiffness: 280, damping: 28 }}
+            className="absolute bottom-0 left-0 right-0 px-5 pb-5"
+          >
+            <div className="rounded-3xl border border-border/70 bg-card shadow-[0_-8px_40px_rgba(0,0,0,0.12)] overflow-hidden">
+              {/* Preview of what'll be shared */}
+              <div className="px-4 pt-4 pb-3">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">{cat.emoji}</span>
+                  <div>
+                    <p className="text-sm font-semibold leading-tight">{title}</p>
+                    <p className="text-xs text-muted-foreground">{cat.label} · Paid by {paidByName}</p>
+                  </div>
+                  <div className="ml-auto text-right">
+                    <p className="text-base font-bold tabular">₹{amount.toLocaleString("en-IN")}</p>
+                    <p className="text-[10px] text-muted-foreground">₹{perHead.toFixed(2)} / person</p>
+                  </div>
+                </div>
+
+                {/* Participant chips */}
+                <div className="flex flex-wrap gap-1.5">
+                  {[...memberNames, ...guestNames].map((name, i) => (
+                    <span
+                      key={i}
+                      className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground"
+                    >
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="h-px bg-border/60 mx-4" />
+
+              {/* Action buttons */}
+              <div className="px-4 py-3 flex items-center gap-2.5">
+                <motion.button
+                  whileTap={{ scale: 0.96 }}
+                  onClick={handleShare}
+                  className="flex-1 h-10 rounded-2xl gradient-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 shadow-[var(--shadow-glow)]"
+                >
+                  {copied
+                    ? <><CheckCheck className="size-4" /> Copied!</>
+                    : <><Share2 className="size-4" /> {navigator.share ? "Share" : "Copy"}</>
+                  }
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.96 }}
+                  onClick={onClose}
+                  className="h-10 px-4 rounded-2xl bg-muted text-muted-foreground font-semibold text-sm hover:bg-muted/70 transition-colors"
+                >
+                  Done
+                </motion.button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

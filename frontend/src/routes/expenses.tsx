@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { Search, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { ExpenseDetailDialog } from "@/components/ExpenseDetailDialog";
 import { CATEGORIES } from "@/lib/store";
@@ -41,6 +41,7 @@ function Expenses() {
 
   // Defensive: always an array regardless of API shape
   const allExpenses = Array.isArray(data) ? data : [];
+  const activeExpenses = allExpenses.filter((e) => !e.isDeleted);
 
   // Filter
   const filtered = allExpenses.filter((e) => {
@@ -64,7 +65,12 @@ function Expenses() {
       <div className="px-4 sm:px-6 pt-6">
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Expenses</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          {allExpenses.length} total · {formatINR(allExpenses.reduce((s, e) => s + e.amount, 0))}
+          {activeExpenses.length} active · {formatINR(activeExpenses.reduce((s, e) => s + e.amount, 0))}
+          {allExpenses.length > activeExpenses.length && (
+            <span className="ml-2 text-red-400/70 text-xs">
+              + {allExpenses.length - activeExpenses.length} deleted
+            </span>
+          )}
         </p>
       </div>
 
@@ -153,6 +159,7 @@ function Expenses() {
               <div className="space-y-3">
                 {items.map((e, i) => {
                   const cat = CATEGORIES.find((c) => c.id === e.category) ?? CATEGORIES[CATEGORIES.length - 1];
+                  const isDeleted = e.isDeleted;
                   return (
                     <motion.button
                       key={e._id}
@@ -162,20 +169,29 @@ function Expenses() {
                       whileHover={{ x: 4 }}
                       whileTap={{ scale: 0.99 }}
                       onClick={() => setSelectedExpense(e)}
-                      className="group relative w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-2xl"
+                      className={`group relative w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-2xl ${isDeleted ? "opacity-50" : ""}`}
                     >
-                      <div className="absolute -left-[18px] top-4 size-3 rounded-full ring-4 ring-background"
-                        style={{ background: cat.tint }} />
-                      <div className="p-4 rounded-2xl bg-card border border-border transition-all duration-200 hover:border-primary/40 hover:bg-primary/5 hover:shadow-[0_16px_34px_rgba(0,0,0,0.12)]">
+                      <div className={`absolute -left-[18px] top-4 size-3 rounded-full ring-4 ring-background ${isDeleted ? "bg-red-400/50" : ""}`}
+                        style={isDeleted ? {} : { background: cat.tint }} />
+                      <div className={`p-4 rounded-2xl border transition-all duration-200 ${
+                        isDeleted
+                          ? "bg-muted/30 border-border/40 hover:border-red-400/20"
+                          : "bg-card border-border hover:border-primary/40 hover:bg-primary/5 hover:shadow-[0_16px_34px_rgba(0,0,0,0.12)]"
+                      }`}>
                         <div className="flex items-start gap-3">
-                          <div className="size-11 rounded-xl grid place-items-center text-xl shrink-0 transition-transform duration-200 group-hover:scale-105"
-                            style={{ background: `color-mix(in oklab, ${cat.tint} 22%, transparent)` }}>
+                          <div className={`size-11 rounded-xl grid place-items-center text-xl shrink-0 transition-transform duration-200 ${isDeleted ? "" : "group-hover:scale-105"}`}
+                            style={{ background: isDeleted ? "color-mix(in oklab, #999 12%, transparent)" : `color-mix(in oklab, ${cat.tint} 22%, transparent)` }}>
                             {cat.emoji}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <div className="font-medium">{e.title || cat.label}</div>
-                              {e.isEdited && (
+                              <div className={`font-medium ${isDeleted ? "line-through text-muted-foreground" : ""}`}>{e.title || cat.label}</div>
+                              {isDeleted && (
+                                <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/20 shrink-0">
+                                  <Trash2 className="size-2.5" /> Deleted entry
+                                </span>
+                              )}
+                              {e.isEdited && !isDeleted && (
                                 <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/20 shrink-0">
                                   ✏️ Edited
                                 </span>
@@ -189,15 +205,17 @@ function Expenses() {
                                 </span>
                               )}
                             </div>
-                            {e.notes && (
+                            {e.notes && !isDeleted && (
                               <div className="text-xs text-muted-foreground mt-0.5 italic">"{e.notes}"</div>
                             )}
                           </div>
                           <div className="text-right shrink-0">
-                            <div className="font-semibold tabular">{formatINR(e.amount)}</div>
-                            <div className="text-[10px] text-muted-foreground">
-                              {formatSplit(e.splitAmount)}
-                            </div>
+                            <div className={`font-semibold tabular ${isDeleted ? "line-through text-muted-foreground" : ""}`}>{formatINR(e.amount)}</div>
+                            {!isDeleted && (
+                              <div className="text-[10px] text-muted-foreground">
+                                {formatSplit(e.splitAmount)}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

@@ -11,7 +11,7 @@ export async function getSummary(groupId: string) {
   if (!group) throw new AppError('Group not found', 404);
 
   const [expenses, balances] = await Promise.all([
-    Expense.find({ groupId: new Types.ObjectId(groupId) }).lean(),
+    Expense.find({ groupId: new Types.ObjectId(groupId), isDeleted: { $ne: true } }).lean(),
     computeGroupBalances(groupId),
   ]);
 
@@ -48,6 +48,7 @@ export async function getMonthlySummary(groupId: string, year: number, month: nu
   const expenses = await Expense.find({
     groupId:   new Types.ObjectId(groupId),
     createdAt: { $gte: start, $lte: end },
+    isDeleted: { $ne: true },
   })
     .populate('paidBy',     'name email avatar')
     .populate('sharedWith', 'name email avatar')
@@ -75,7 +76,7 @@ export async function getMonthlySummary(groupId: string, year: number, month: nu
 
 export async function getCategoryBreakdown(groupId: string) {
   const result = await Expense.aggregate([
-    { $match: { groupId: new Types.ObjectId(groupId) } },
+    { $match: { groupId: new Types.ObjectId(groupId), isDeleted: { $ne: true } } },
     {
       $group: {
         _id:   '$category',

@@ -64,11 +64,13 @@ interface Props {
   toPay: number;
   totalSpent: number;
   expenseCount: number;
+  myTotalSpent: number;
+  myExpenseCount: number;
   isLoading: boolean;
 }
 
 export function FinancialSummaryCard({
-  netBalance, toCollect, toPay, totalSpent, expenseCount, isLoading,
+  netBalance, toCollect, toPay, totalSpent, expenseCount, myTotalSpent, myExpenseCount, isLoading,
 }: Props) {
   const absNet = Math.abs(netBalance);
   const prefix = netBalance > 0 ? "+" : netBalance < 0 ? "−" : "";
@@ -203,22 +205,40 @@ export function FinancialSummaryCard({
           initial={{ opacity: 0, y: 6 }}
           animate={inView && !isLoading ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.4, delay: 1.05 }}
-          className="mt-3.5 flex items-center justify-between"
+          className="mt-3.5 flex items-center justify-between gap-3"
         >
-          <div className="flex items-center gap-2 text-white/70 text-xs font-medium">
+          <div className="flex items-center gap-2 text-white/70 text-xs font-medium shrink-0">
             <Receipt className="size-3.5" />
             <span>Total spent</span>
           </div>
           {isLoading ? (
-            <div className="h-5 w-20 bg-white/20 rounded animate-pulse" />
+            <div className="h-5 w-full bg-white/20 rounded animate-pulse" />
           ) : (
-            <div className="text-right">
-              <span className="text-base font-bold tabular">
-                <CountUpINR target={totalSpent} durationMs={800} startDelay={1050} />
-              </span>
-              <span className="text-white/55 text-xs ml-2">
-                across {expenseCount} expense{expenseCount !== 1 ? "s" : ""}
-              </span>
+            <div className="flex items-center gap-3 flex-wrap justify-end">
+              {/* My spending */}
+              <div className="flex flex-col items-end">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-base font-bold tabular">
+                    <CountUpINR target={myTotalSpent} durationMs={800} startDelay={1050} />
+                  </span>
+                  <span className="text-white/55 text-[10px]">
+                    by me ({myExpenseCount})
+                  </span>
+                </div>
+              </div>
+              {/* Divider */}
+              <div className="h-7 w-px bg-white/20 shrink-0" />
+              {/* Group total */}
+              <div className="flex flex-col items-end">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-base font-bold tabular">
+                    <CountUpINR target={totalSpent} durationMs={800} startDelay={1050} />
+                  </span>
+                  <span className="text-white/55 text-[10px]">
+                    group ({expenseCount})
+                  </span>
+                </div>
+              </div>
             </div>
           )}
         </motion.div>

@@ -31,7 +31,7 @@ export async function computeGroupBalances(groupId: string): Promise<BalanceEntr
     User.find({
       $or: [{ groupId: gid }, { groupIds: gid }],
     }).select('_id name email avatar').lean(),
-    Expense.find({ groupId: gid }).lean(),
+    Expense.find({ groupId: gid, isDeleted: { $ne: true } }).lean(),
     Settlement.find({ groupId: gid, status: 'approved' }).lean(),
   ]);
 

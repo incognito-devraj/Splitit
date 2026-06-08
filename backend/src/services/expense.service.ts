@@ -120,6 +120,7 @@ export async function listExpenses(
     if (query.startDate) (filter.createdAt as Record<string, Date>).$gte = new Date(query.startDate);
     if (query.endDate)   (filter.createdAt as Record<string, Date>).$lte = new Date(query.endDate);
   }
+  // Include ALL expenses (active + soft-deleted) so the history page can show deleted entries
 
   const [expenses, total] = await Promise.all([
     Expense.find(filter)
@@ -221,15 +222,20 @@ export async function updateExpense(
   return populateExpense(expenseId);
 }
 
-// ─── Delete ───────────────────────────────────────────────────────────────────
+// ─── Soft Delete ─────────────────────────────────────────────────────────────
 
 export async function deleteExpense(expenseId: string, groupId: string, userId: string, isAdmin: boolean) {
   const expense = await Expense.findById(expenseId);
   if (!expense) throw new AppError('Expense not found', 404);
   if (expense.groupId.toString() !== groupId) throw new AppError('Expense not in your group', 403);
   if (expense.paidBy.toString() !== userId && !isAdmin) {
-    throw new AppError('Only the payer or admin can delete this expense', 403);
+    throw new AppError('Only the person who added this expense can delete it', 403);
   }
+  if (expense.isDeleted) throw new AppError('Expense is already deleted', 400);
+
+  expense.isDeleted = true;
+  expense.deletedAt = new Date();
+  await expense.save();
 
   await ExpenseAudit.create({
     expenseId: expense._id,
@@ -240,8 +246,7 @@ export async function deleteExpense(expenseId: string, groupId: string, userId: 
     newData:   expense.toObject(),
   });
 
-  await expense.deleteOne();
-  logger.info(`Expense ${expenseId} deleted by ${userId}`);
+  logger.info(`Expense ${expenseId} soft-deleted by ${userId}`);
 }
 
 // ─── Audit History ────────────────────────────────────────────────────────────

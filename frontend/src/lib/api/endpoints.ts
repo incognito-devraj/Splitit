@@ -41,6 +41,8 @@ export interface ApiExpense {
   notes: string;
   groupId: string;
   isEdited: boolean;
+  isDeleted: boolean;
+  deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

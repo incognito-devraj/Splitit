@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeftRight, CalendarDays, Clock3, Pencil, X } from "lucide-react";
-import { ApiExpense } from "@/lib/api/endpoints";
+import { ArrowLeftRight, CalendarDays, Clock3, Pencil, Trash2, X } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ApiExpense, expenseApi } from "@/lib/api/endpoints";
 import { CATEGORIES } from "@/lib/store";
 import { formatINR, formatSplit } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
@@ -40,10 +41,25 @@ export function ExpenseDetailDialog({
   // Keep a local copy so the dialog updates immediately after an edit
   const [expense, setExpense] = useState<ApiExpense | null>(initialExpense);
   const [editOpen, setEditOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const { user } = useAuth();
+  const qc = useQueryClient();
 
   // Sync when parent changes the expense (e.g. opening a different one)
-  useEffect(() => { setExpense(initialExpense); }, [initialExpense]);
+  useEffect(() => { setExpense(initialExpense); setConfirmDelete(false); }, [initialExpense]);
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => expenseApi.delete(id),
+    onSuccess: () => {
+      // Optimistically mark as deleted in local state so UI updates immediately
+      setExpense((prev) => prev ? { ...prev, isDeleted: true, deletedAt: new Date().toISOString() } : prev);
+      setConfirmDelete(false);
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+      qc.invalidateQueries({ queryKey: ["balances"] });
+      qc.invalidateQueries({ queryKey: ["summary"] });
+      qc.invalidateQueries({ queryKey: ["summary-category"] });
+    },
+  });
 
   const category = expense
     ? (CATEGORIES.find((item) => item.id === expense.category) ?? CATEGORIES[CATEGORIES.length - 1])
@@ -52,8 +68,9 @@ export function ExpenseDetailDialog({
     ? expense.sharedWith.length + (expense.guestParticipants?.length ?? 0)
     : 0;
 
-  // Only the person who added (paid for) the expense can edit it
-  const canEdit = !!expense && expense.paidBy._id === user?._id;
+  // Only the person who added (paid for) the expense can edit/delete it
+  const canEdit = !!expense && !expense.isDeleted && expense.paidBy._id === user?._id;
+  const canDelete = !!expense && !expense.isDeleted && expense.paidBy._id === user?._id;
 
   useEffect(() => {
     if (!open) return;
@@ -78,16 +95,17 @@ export function ExpenseDetailDialog({
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             />
 
-            {/* Sheet */}
+            {/* Sheet — flex column so header is fixed and body scrolls */}
             <motion.div
               initial={{ y: 40, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 40, opacity: 0 }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className="relative z-10 w-full max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-t-[32px] border border-border bg-card shadow-2xl sm:max-w-lg sm:rounded-3xl"
+              className="relative z-10 w-full flex flex-col rounded-t-[32px] border border-border bg-card shadow-2xl sm:max-w-lg sm:rounded-3xl"
+              style={{ maxHeight: "calc(100dvh - 1rem)" }}
             >
-              {/* Sticky header */}
-              <div className="sticky top-0 z-10 bg-card/90 backdrop-blur-sm pt-3 pb-2 px-5 sm:px-6">
+              {/* Fixed header — never scrolls */}
+              <div className="shrink-0 bg-card/90 backdrop-blur-sm pt-3 pb-2 px-5 sm:px-6 border-b border-border/40">
                 <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted sm:hidden" />
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
@@ -95,19 +113,25 @@ export function ExpenseDetailDialog({
                       <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground font-medium">
                         Expense details
                       </div>
+                      {/* "Deleted" badge */}
+                      {expense.isDeleted && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/20">
+                          <Trash2 className="size-2.5" /> Deleted
+                        </span>
+                      )}
                       {/* "Edited" badge */}
-                      {expense.isEdited && (
+                      {expense.isEdited && !expense.isDeleted && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/20">
                           <Pencil className="size-2.5" /> Edited
                         </span>
                       )}
                     </div>
-                    <div className="mt-0.5 text-base font-bold sm:text-lg leading-tight truncate">
+                    {/* Title wraps instead of truncating on mobile */}
+                    <div className="mt-0.5 text-base font-bold sm:text-lg leading-tight break-words pr-2">
                       {expense.title || category?.label}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    {/* Edit button — only for payer or admin */}
                     {canEdit && (
                       <button
                         onClick={() => setEditOpen(true)}
@@ -115,6 +139,15 @@ export function ExpenseDetailDialog({
                         className="size-9 rounded-full bg-primary/10 text-primary grid place-items-center hover:bg-primary/20 transition-colors"
                       >
                         <Pencil className="size-4" />
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        onClick={() => setConfirmDelete(true)}
+                        aria-label="Delete expense"
+                        className="size-9 rounded-full bg-red-500/10 text-red-400 grid place-items-center hover:bg-red-500/20 transition-colors"
+                      >
+                        <Trash2 className="size-4" />
                       </button>
                     )}
                     <button
@@ -128,11 +161,25 @@ export function ExpenseDetailDialog({
                 </div>
               </div>
 
-              {/* Body */}
-              <div className="px-5 pb-6 pt-1 sm:px-6 sm:pb-8 space-y-4">
+              {/* Scrollable body — takes remaining height */}
+              <div className="flex-1 overflow-y-auto overscroll-contain">
+              <div className="px-5 pt-3 sm:px-6 sm:pb-8 space-y-4" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 1.5rem))" }}>
+
+                {/* Deleted notice banner */}
+                {expense.isDeleted && (
+                  <div className="flex items-center gap-2.5 rounded-2xl bg-red-500/10 border border-red-500/20 px-4 py-3">
+                    <Trash2 className="size-4 text-red-400 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-red-400">Deleted entry</p>
+                      <p className="text-xs text-red-400/70 mt-0.5">
+                        This expense was deleted on {formatDate(expense.deletedAt!)} and is no longer counted in balances.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Hero gradient card */}
-                <div className="rounded-3xl gradient-balance p-5 text-white shadow-[var(--shadow-card)] sm:p-6">
+                <div className={`rounded-3xl gradient-balance p-5 text-white shadow-[var(--shadow-card)] sm:p-6 ${expense.isDeleted ? "opacity-50" : ""}`}>
                   <div className="flex items-center gap-2 text-white/75 text-sm font-medium">
                     <span className="text-xl">{category?.emoji}</span>
                     <span>{category?.label}</span>
@@ -179,7 +226,6 @@ export function ExpenseDetailDialog({
                     )}
                   </div>
                 </div>
-
                 {/* Split summary */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-2xl bg-muted/60 p-4">
@@ -252,6 +298,7 @@ export function ExpenseDetailDialog({
                   </p>
                 </div>
               </div>
+              </div>{/* end scrollable body */}
             </motion.div>
           </motion.div>
         )}
@@ -264,6 +311,57 @@ export function ExpenseDetailDialog({
         onClose={() => setEditOpen(false)}
         onSaved={(updated) => setExpense(updated)}
       />
+
+      {/* Confirm delete modal */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <motion.div
+            className="fixed inset-0 z-[80] flex items-center justify-center p-6"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="absolute inset-0 bg-black/60"
+              onClick={() => setConfirmDelete(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0, y: 8 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 8 }}
+              transition={{ type: "spring", damping: 26, stiffness: 320 }}
+              className="relative z-10 w-full max-w-sm rounded-3xl bg-card border border-border p-6 shadow-2xl"
+            >
+              <div className="size-12 rounded-2xl bg-red-500/10 grid place-items-center mb-4">
+                <Trash2 className="size-6 text-red-400" />
+              </div>
+              <h3 className="text-lg font-bold">Delete this expense?</h3>
+              <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+                The entry will stay visible in history with a "Deleted" label but will be removed from all balance and summary calculations.
+              </p>
+              {deleteMutation.isError && (
+                <p className="text-xs text-red-400 mt-2">Failed to delete. Please try again.</p>
+              )}
+              <div className="mt-5 flex gap-3">
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="flex-1 h-11 rounded-2xl bg-muted text-muted-foreground font-semibold text-sm hover:bg-muted/70 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => expense && deleteMutation.mutate(expense._id)}
+                  disabled={deleteMutation.isPending}
+                  className="flex-1 h-11 rounded-2xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {deleteMutation.isPending
+                    ? <><div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Deleting…</>
+                    : <><Trash2 className="size-4" /> Delete</>
+                  }
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

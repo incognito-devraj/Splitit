@@ -21,6 +21,8 @@ export interface IExpense extends Document {
   notes: string;
   groupId: Types.ObjectId;
   isEdited: boolean;          // true once the expense has been updated
+  isDeleted: boolean;         // soft-delete flag
+  deletedAt: Date | null;     // when it was soft-deleted
   createdAt: Date;
   updatedAt: Date;
 }
@@ -50,6 +52,8 @@ const expenseSchema = new Schema<IExpense>(
     notes:    { type: String, trim: true, maxlength: 500, default: '' },
     groupId:  { type: Schema.Types.ObjectId, ref: 'Group', required: true },
     isEdited: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false, index: true },
+    deletedAt: { type: Date, default: null },
   },
   {
     timestamps: true,
