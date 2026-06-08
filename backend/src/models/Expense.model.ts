@@ -60,6 +60,9 @@ const expenseSchema = new Schema<IExpense>(
     toJSON: {
       transform(_doc, ret: Record<string, unknown>) {
         delete ret['__v'];
+        // Normalise soft-delete fields so they're always present in API responses
+        if (ret['isDeleted'] === undefined) ret['isDeleted'] = false;
+        if (ret['deletedAt'] === undefined) ret['deletedAt'] = null;
         return ret;
       },
     },

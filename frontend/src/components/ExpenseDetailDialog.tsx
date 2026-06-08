@@ -102,7 +102,7 @@ export function ExpenseDetailDialog({
               exit={{ y: 40, opacity: 0 }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
               className="relative z-10 w-full flex flex-col rounded-t-[32px] border border-border bg-card shadow-2xl sm:max-w-lg sm:rounded-3xl"
-              style={{ maxHeight: "calc(100dvh - 1rem)" }}
+              style={{ maxHeight: "calc(100dvh - env(safe-area-inset-bottom, 0px) - 4.5rem)" }}
             >
               {/* Fixed header — never scrolls */}
               <div className="shrink-0 bg-card/90 backdrop-blur-sm pt-3 pb-2 px-5 sm:px-6 border-b border-border/40">

@@ -100,7 +100,8 @@ export async function createExpense(
   });
 
   logger.info(`Expense created ₹${body.amount} [${body.category}] group=${groupId} guests=${guestIds.length}`);
-  return populateExpense(expense._id.toString());
+  const created = await populateExpense(expense._id.toString());
+  return created ? normaliseExpense(created) : created;
 }
 
 // ─── List ─────────────────────────────────────────────────────────────────────
@@ -110,7 +111,7 @@ export async function listExpenses(
   query: { category?: string; startDate?: string; endDate?: string; page?: number; limit?: number },
 ) {
   const page  = Math.max(1, query.page  ?? 1);
-  const limit = Math.min(100, query.limit ?? 20);
+  const limit = Math.min(500, query.limit ?? 20);
   const skip  = (page - 1) * limit;
 
   const filter: Record<string, unknown> = { groupId: new Types.ObjectId(groupId) };
@@ -122,7 +123,7 @@ export async function listExpenses(
   }
   // Include ALL expenses (active + soft-deleted) so the history page can show deleted entries
 
-  const [expenses, total] = await Promise.all([
+  const [rawExpenses, total] = await Promise.all([
     Expense.find(filter)
       .populate('paidBy',             'name email avatar')
       .populate('sharedWith',         'name email avatar')
@@ -134,6 +135,13 @@ export async function listExpenses(
     Expense.countDocuments(filter),
   ]);
 
+  // Normalise soft-delete fields — old documents won't have them set in MongoDB
+  const expenses = rawExpenses.map((e) => ({
+    ...e,
+    isDeleted: e.isDeleted ?? false,
+    deletedAt: e.deletedAt ?? null,
+  }));
+
   return { expenses, pagination: paginate(total, page, limit) };
 }
 
@@ -143,7 +151,7 @@ export async function getExpense(expenseId: string, groupId: string) {
   const expense = await populateExpense(expenseId);
   if (!expense) throw new AppError('Expense not found', 404);
   if (expense.groupId.toString() !== groupId) throw new AppError('Expense not in your group', 403);
-  return expense;
+  return normaliseExpense(expense);
 }
 
 // ─── Update ───────────────────────────────────────────────────────────────────
@@ -276,4 +284,10 @@ function populateExpense(id: string) {
     .populate('sharedWith',        'name email avatar')
     .populate('guestParticipants', 'name')
     .lean();
+}
+
+function normaliseExpense<T extends { isDeleted?: boolean; deletedAt?: Date | null }>(
+  doc: T,
+): T & { isDeleted: boolean; deletedAt: Date | null } {
+  return { ...doc, isDeleted: doc.isDeleted ?? false, deletedAt: doc.deletedAt ?? null };
 }

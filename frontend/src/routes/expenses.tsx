@@ -35,7 +35,7 @@ function Expenses() {
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: QK.expenses(activeGroupId),
-    queryFn: () => expenseApi.list({ limit: 100 }).then((r) => r.data.data),
+    queryFn: () => expenseApi.list({ limit: 200 }).then((r) => r.data.data),
     enabled: !!activeGroupId,
   });
 

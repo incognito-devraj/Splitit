@@ -110,35 +110,79 @@ function Reports() {
         expenseApi.list({ limit: 500 }),
         summaryApi.get(),
       ]);
-      const allExp = expRes.data.data ?? [];
+      const allExp = (expRes.data.data ?? []).filter((e) => !e.isDeleted);
       const s = sumRes.data.data;
       const from = fromDate ? new Date(fromDate) : null;
       const to = toDate ? new Date(toDate + "T23:59:59") : null;
+
       const filtered = allExp.filter((e) => {
         const d = new Date(e.createdAt);
         if (from && d < from) return false;
         if (to && d > to) return false;
         return true;
       });
-      if (filtered.length === 0 && !from && !to) throw new Error("No expenses found.");
+
+      if (filtered.length === 0) throw new Error("No expenses found for the selected period.");
+
       const periodLabel = from || to
-        ? `${from ? fmtDate(fromDate) : "beginning"} – ${to ? fmtDate(toDate) : "today"}`
+        ? `${from ? fmtDate(fromDate) : "Beginning"} – ${to ? fmtDate(toDate) : "Today"}`
         : "All time";
-      let r = `📊 *${s.groupName ?? "Group"} — Expense Report*\n`;
-      r += `📅 Period: ${periodLabel}\n`;
-      r += `💰 Total Spent: ${fmt(s.totalAmount)}\n`;
-      r += `🧾 Total Expenses: ${s.totalExpenses}\n\n── Balances ──\n`;
-      for (const b of s.summary ?? []) r += `${b.action === "receives" ? "✅" : "🔴"} ${b.name} ${b.action} ${fmt(b.amount)}\n`;
-      if ((s.summary ?? []).length === 0) r += `✅ All settled up!\n`;
-      r += `\n── Expenses ──\n`;
-      const sorted = [...filtered].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-      for (const e of sorted) {
-        const parts = [...(e.sharedWith ?? []).map((u) => u.name), ...(e.guestParticipants ?? []).map((g) => g.name)];
-        r += `${fmtDate(e.createdAt)} — ${e.paidBy?.name ?? "?"} paid ${fmt(e.amount)} for ${e.title || e.category}\n`;
-        if (parts.length) r += `  Split among: ${parts.join(", ")}\n`;
+
+      const totalAmt = filtered.reduce((sum, e) => sum + e.amount, 0);
+      const DIVIDER = "➖".repeat(10);
+
+      // ── Header ──────────────────────────────────────────────────────────
+      const lines: string[] = [];
+      lines.push(`📊 ${(s.groupName ?? "Group").toUpperCase()} — EXPENSE REPORT`);
+      lines.push(`📅 Period: ${periodLabel}`);
+      lines.push(`💰 Total Spent: ${fmt(totalAmt)}`);
+      lines.push(`🧾 Total Expenses: ${filtered.length}`);
+
+      // ── Balances ─────────────────────────────────────────────────────────
+      lines.push(`💳 BALANCES`);
+      for (const b of s.summary ?? []) {
+        const dot = b.action === "receives" ? "🟢" : "🔴";
+        const verb = b.action === "receives" ? "receives" : "owes";
+        lines.push(`${dot} ${b.name} — ${verb} ${fmt(b.amount)}`);
       }
-      r += `\n_Powered by Splitit_`;
-      return r;
+      if ((s.summary ?? []).length === 0) lines.push(`✅ All settled up!`);
+
+      // ── Expenses grouped by date ──────────────────────────────────────
+      const sorted = [...filtered].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+
+      // Group by calendar date
+      const byDay = new Map<string, typeof sorted>();
+      for (const e of sorted) {
+        const dayKey = new Date(e.createdAt).toLocaleDateString("en-IN", {
+          day: "2-digit", month: "long", year: "numeric",
+        }).toUpperCase();
+        if (!byDay.has(dayKey)) byDay.set(dayKey, []);
+        byDay.get(dayKey)!.push(e);
+      }
+
+      for (const [day, dayExpenses] of byDay.entries()) {
+        lines.push(DIVIDER);
+        lines.push(`📅 ${day}`);
+        for (const e of dayExpenses) {
+          const parts = [
+            ...(e.sharedWith ?? []).map((u) => u.name),
+            ...(e.guestParticipants ?? []).map((g) => g.name),
+          ];
+          const cat = CATEGORIES.find((c) => c.id === e.category);
+          lines.push(`${cat?.emoji ?? "🛒"} ${fmt(e.amount)} — ${e.title || e.category}`);
+          lines.push(`👤 Paid by: ${e.paidBy?.name ?? "?"}`);
+          lines.push(`💰 Each pays: ${fmt(e.splitAmount)}`);
+          if (parts.length) lines.push(`👥 ${parts.join(", ")}`);
+          lines.push(""); // blank line between expenses
+        }
+      }
+
+      lines.push(DIVIDER);
+      lines.push(`🤝 Powered by Splitit`);
+
+      return lines.join("\n");
     },
     onSuccess: (text) => { setReportText(text); setAdminStep("preview"); },
     onError: (e: any) => { showAdminError(e?.message ?? "Failed to generate report."); setAdminStep("idle"); },
@@ -511,10 +555,12 @@ function Reports() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 z-[60] bg-black/55" onClick={() => setAdminStep("idle")} />
             <motion.div
-              initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }}
+              initial={{ opacity: 0, scale: 0.94, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 12 }}
               transition={{ type: "spring", damping: 26, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="fixed inset-x-4 bottom-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-sm z-[61] bg-background rounded-3xl border border-border shadow-[0_20px_60px_rgba(0,0,0,0.25)] p-6"
+              className="fixed inset-x-4 top-1/2 -translate-y-1/2 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-sm z-[61] bg-background rounded-3xl border border-border shadow-[0_20px_60px_rgba(0,0,0,0.25)] p-6"
             >
               <div className="flex items-center justify-between mb-5">
                 <div>
@@ -564,12 +610,14 @@ function Reports() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 z-[60] bg-black/55" onClick={() => setAdminStep("idle")} />
             <motion.div
-              initial={{ opacity: 0, y: "100%" }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: "100%" }}
+              initial={{ opacity: 0, scale: 0.94, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 12 }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="fixed z-[61] bg-background flex flex-col inset-x-0 bottom-0 h-[90dvh] sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-lg sm:h-auto sm:max-h-[88vh] rounded-t-3xl sm:rounded-3xl border border-border shadow-[0_24px_60px_rgba(0,0,0,0.3)]"
+              className="fixed z-[61] bg-background flex flex-col inset-x-4 top-1/2 -translate-y-1/2 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-lg rounded-3xl border border-border shadow-[0_24px_60px_rgba(0,0,0,0.3)]"
+              style={{ maxHeight: "min(72dvh, 560px)" }}
             >
-              <div className="w-10 h-1 bg-border rounded-full mx-auto mt-3 sm:hidden shrink-0" />
               <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border shrink-0">
                 <div>
                   <h3 className="font-bold text-base">Expense Report</h3>
@@ -582,7 +630,7 @@ function Reports() {
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto overscroll-contain px-5 pt-4 pb-2">
-                <pre className="text-sm text-foreground whitespace-pre-wrap font-sans leading-relaxed bg-muted/40 rounded-2xl p-4">{reportText}</pre>
+                <pre className="text-xs sm:text-sm text-foreground whitespace-pre-wrap font-sans leading-relaxed bg-muted/40 rounded-2xl p-3 sm:p-4">{reportText}</pre>
               </div>
               <div className="shrink-0 px-5 py-4 border-t border-border space-y-2">
                 {reportShared && (
@@ -609,9 +657,11 @@ function Reports() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="fixed inset-0 z-[70] bg-black/55" onClick={() => setShowClearDialog(false)} />
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.94, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 12 }}
               onClick={(e) => e.stopPropagation()}
-              className="fixed z-[71] inset-x-4 bottom-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-sm bg-background rounded-3xl border border-border p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]"
+              className="fixed z-[71] inset-x-4 top-1/2 -translate-y-1/2 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-sm bg-background rounded-3xl border border-border p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]"
             >
               <div className="flex items-center gap-3 mb-4">
                 <div className="size-11 rounded-2xl bg-red-500/15 grid place-items-center shrink-0">
