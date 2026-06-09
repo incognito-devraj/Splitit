@@ -48,49 +48,85 @@ function AuthGuard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, isLoading, user?.groupId, pathname]);
 
-  if (isLoading) {
+  // Only show the splash/loading screen if we have NO cached user at all.
+  // If we have a persisted user, isAuthenticated is already true and we render
+  // the app immediately — the background /me refresh is silent.
+  if (isLoading && !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center theme-app-bg">
-        <div
-          className="flex flex-col items-center gap-5"
-          style={{ animation: "splashIn 0.5s cubic-bezier(0.16,1,0.3,1) both" }}
-        >
-          {/* Logo with gradient ring */}
+      <div className="min-h-screen bg-[#0f1923] flex items-center justify-center overflow-hidden">
+        <style>{`
+          @keyframes splashLogoIn {
+            0%   { opacity: 0; transform: scale(0.6) translateY(20px); }
+            60%  { opacity: 1; transform: scale(1.08) translateY(-4px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+          }
+          @keyframes splashTextIn {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes glowPulse {
+            0%, 100% { opacity: 0.5; transform: scale(1.1); }
+            50%       { opacity: 0.85; transform: scale(1.28); }
+          }
+          @keyframes dotBounce {
+            0%, 80%, 100% { transform: scale(0.7); opacity: 0.35; }
+            40%            { transform: scale(1.15); opacity: 1; }
+          }
+          .splash-logo  { animation: splashLogoIn 0.7s cubic-bezier(0.16,1,0.3,1) both; }
+          .splash-text  { animation: splashTextIn 0.55s 0.35s cubic-bezier(0.16,1,0.3,1) both; opacity: 0; }
+          .splash-sub   { animation: splashTextIn 0.55s 0.48s cubic-bezier(0.16,1,0.3,1) both; opacity: 0; }
+          .splash-glow  { animation: glowPulse 2.2s 0.2s ease-in-out infinite; }
+          .splash-dot   { animation: dotBounce 1.2s ease-in-out infinite; }
+          .splash-dot:nth-child(2) { animation-delay: 0.18s; }
+          .splash-dot:nth-child(3) { animation-delay: 0.36s; }
+        `}</style>
+
+        <div className="flex flex-col items-center gap-5">
+          {/* Logo + glow */}
           <div className="relative">
             <div
-              className="absolute inset-0 rounded-[28px] opacity-60"
+              className="absolute inset-0 rounded-[32px] splash-glow"
               style={{
-                background: "var(--gradient-primary)",
-                filter: "blur(18px)",
-                transform: "scale(1.15)",
+                background: "radial-gradient(circle, oklch(0.72 0.18 155 / 0.7) 0%, oklch(0.68 0.20 245 / 0.4) 60%, transparent 100%)",
+                filter: "blur(22px)",
               }}
             />
             <img
               src="/favicons/android-chrome-192x192.png"
               alt="Splitit"
-              className="relative size-20 rounded-[28px] shadow-[0_8px_32px_rgba(0,0,0,0.18)]"
+              className="splash-logo relative size-24 rounded-[28px] shadow-[0_16px_48px_rgba(0,0,0,0.45)]"
+              style={{ zIndex: 1 }}
             />
           </div>
-          {/* Name + tagline */}
-          <div className="text-center" style={{ animation: "splashIn 0.55s 0.1s cubic-bezier(0.16,1,0.3,1) both" }}>
-            <div className="text-2xl font-bold tracking-tight text-foreground">Splitit</div>
-            <div className="text-sm text-muted-foreground mt-0.5">Split smarter, settle faster</div>
+
+          {/* App name */}
+          <div className="text-center">
+            <div className="splash-text text-3xl font-extrabold tracking-tight text-white">
+              Splitit
+            </div>
+            <div className="splash-sub text-sm text-white/55 mt-1 font-medium">
+              Split smarter, settle faster
+            </div>
           </div>
-          {/* Spinner */}
-          <div
-            className="size-5 border-2 border-primary/30 border-t-primary rounded-full"
-            style={{ animation: "spin 0.8s linear infinite" }}
-          />
+
+          {/* Animated dots */}
+          <div className="flex items-center gap-2 mt-1">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className={`splash-dot size-2 rounded-full`}
+                style={{
+                  background: i === 0
+                    ? "oklch(0.72 0.18 155)"
+                    : i === 1
+                    ? "oklch(0.68 0.20 245)"
+                    : "oklch(0.72 0.18 35)",
+                  animationDelay: `${i * 0.18}s`,
+                }}
+              />
+            ))}
+          </div>
         </div>
-        <style>{`
-          @keyframes splashIn {
-            from { opacity: 0; transform: translateY(12px); }
-            to   { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
       </div>
     );
   }

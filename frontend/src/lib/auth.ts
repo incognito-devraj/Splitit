@@ -52,11 +52,23 @@ export const useAuth = create<AuthState>()(
           set({ isLoading: false, isAuthenticated: false });
           return;
         }
+
+        // ── Optimistic unlock: if we already have a persisted user + token,
+        //    mark as authenticated immediately so the dashboard shows at once.
+        //    Then silently refresh user data in the background.
+        const { user: persistedUser } = get();
+        if (persistedUser) {
+          set({ isAuthenticated: true, isLoading: false });
+        }
+
+        // Background refresh with a 6-second timeout so a slow/offline
+        // server never blocks the app indefinitely.
         try {
-          // Always fetch fresh user data from /me on app start
-          const { data } = await authApi.me();
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("timeout")), 6000)
+          );
+          const { data } = await Promise.race([authApi.me(), timeoutPromise]);
           const freshUser = data.data;
-          // Sync tokens from localStorage
           const storedRefresh = localStorage.getItem("refreshToken");
           set({
             user: freshUser,
@@ -65,7 +77,14 @@ export const useAuth = create<AuthState>()(
             isAuthenticated: true,
             isLoading: false,
           });
-        } catch {
+        } catch (err: unknown) {
+          const isTimeout = err instanceof Error && err.message === "timeout";
+          if (isTimeout) {
+            // Network is slow — stay logged in with cached data, don't disrupt the user
+            set({ isLoading: false });
+            return;
+          }
+          // Token is genuinely invalid — clear and force re-login
           localStorage.removeItem("accessToken");
           localStorage.removeItem("refreshToken");
           set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false, isLoading: false });
@@ -83,8 +102,10 @@ export const useAuth = create<AuthState>()(
       // On rehydration, mark as loading so initialize() runs
       onRehydrateStorage: () => (state) => {
         if (state) {
+          // If we have a persisted user + token, optimistically mark authenticated
+          // so AuthGuard can render the app immediately
           state.isLoading = true;
-          state.isAuthenticated = !!state.accessToken;
+          state.isAuthenticated = !!(state.accessToken && state.user);
         }
       },
     },
