@@ -9,7 +9,7 @@ import {
   useNavigate,
   useLocation,
 } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/lib/theme";
@@ -17,13 +17,179 @@ import { ThemeProvider } from "@/lib/theme";
 const PUBLIC_ROUTES = ["/login", "/onboarding"];
 const NO_GROUP_ROUTES = ["/onboarding", "/groups"];
 
+// ── Animated splash shown only while auth is resolving (no cached user) ──────
+function SplashScreen() {
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden"
+      style={{ background: "linear-gradient(160deg, #0d1f2d 0%, #0f1923 45%, #160d28 100%)" }}
+    >
+      <style>{`
+        /* Ambient background pulse */
+        @keyframes ambientDrift {
+          0%   { transform: translate(0,   0)   scale(1);    opacity: 0.28; }
+          50%  { transform: translate(18px,-12px) scale(1.12); opacity: 0.42; }
+          100% { transform: translate(0,   0)   scale(1);    opacity: 0.28; }
+        }
+        @keyframes ambientDrift2 {
+          0%   { transform: translate(0,  0)   scale(1);    opacity: 0.18; }
+          50%  { transform: translate(-14px,10px) scale(1.09); opacity: 0.32; }
+          100% { transform: translate(0,  0)   scale(1);    opacity: 0.18; }
+        }
+
+        /* Logo: fade in → scale 0.9 → 1 */
+        @keyframes logoIn {
+          0%   { opacity: 0; transform: scale(0.72) translateY(16px); }
+          55%  { opacity: 1; transform: scale(1.06) translateY(-3px); }
+          100% { opacity: 1; transform: scale(1)    translateY(0); }
+        }
+        /* Glow behind logo */
+        @keyframes glowExpand {
+          0%   { opacity: 0;    transform: scale(0.6); }
+          40%  { opacity: 0.9;  transform: scale(1.3); }
+          100% { opacity: 0.55; transform: scale(1.1); }
+        }
+        @keyframes glowPulse {
+          0%, 100% { opacity: 0.55; transform: scale(1.1);  }
+          50%       { opacity: 0.85; transform: scale(1.28); }
+        }
+        /* Text fade-up */
+        @keyframes textIn {
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        /* Dots */
+        @keyframes dotPop {
+          0%, 80%, 100% { transform: scale(0.65); opacity: 0.3; }
+          40%            { transform: scale(1.2);  opacity: 1;   }
+        }
+
+        .splash-ambient-1 {
+          position: absolute;
+          top: 20%; left: -10%;
+          width: 360px; height: 360px;
+          border-radius: 9999px;
+          background: oklch(0.72 0.18 155 / 1);
+          filter: blur(80px);
+          pointer-events: none;
+          animation: ambientDrift 6s ease-in-out infinite;
+        }
+        .splash-ambient-2 {
+          position: absolute;
+          bottom: 20%; right: -10%;
+          width: 300px; height: 300px;
+          border-radius: 9999px;
+          background: oklch(0.68 0.20 245 / 1);
+          filter: blur(70px);
+          pointer-events: none;
+          animation: ambientDrift2 7s ease-in-out infinite;
+        }
+        .splash-ambient-3 {
+          position: absolute;
+          top: 60%; left: 30%;
+          width: 200px; height: 200px;
+          border-radius: 9999px;
+          background: oklch(0.65 0.25 295 / 1);
+          filter: blur(60px);
+          pointer-events: none;
+          animation: ambientDrift 9s ease-in-out infinite reverse;
+        }
+
+        .splash-logo-wrap {
+          position: relative;
+          animation: logoIn 0.65s cubic-bezier(0.16,1,0.3,1) 0.05s both;
+        }
+        .splash-glow {
+          position: absolute;
+          inset: -12px;
+          border-radius: 36px;
+          background: radial-gradient(circle, oklch(0.72 0.18 155 / 0.9) 0%, oklch(0.68 0.20 245 / 0.4) 55%, transparent 100%);
+          filter: blur(20px);
+          animation: glowExpand 0.7s cubic-bezier(0.16,1,0.3,1) 0.15s both,
+                     glowPulse  2.4s ease-in-out 0.85s infinite;
+        }
+        .splash-logo {
+          position: relative;
+          width: 96px; height: 96px;
+          border-radius: 28px;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+          z-index: 1;
+        }
+        .splash-title {
+          animation: textIn 0.5s cubic-bezier(0.16,1,0.3,1) 0.38s both;
+          font-size: 2rem;
+          font-weight: 800;
+          letter-spacing: -0.02em;
+          color: #fff;
+        }
+        .splash-sub {
+          animation: textIn 0.5s cubic-bezier(0.16,1,0.3,1) 0.50s both;
+          font-size: 0.875rem;
+          color: rgba(255,255,255,0.52);
+          margin-top: 4px;
+          font-weight: 500;
+        }
+        .splash-dots {
+          animation: textIn 0.4s cubic-bezier(0.16,1,0.3,1) 0.62s both;
+          display: flex; align-items: center; gap: 8px;
+          margin-top: 4px;
+        }
+        .splash-dot {
+          width: 8px; height: 8px;
+          border-radius: 9999px;
+          animation: dotPop 1.3s ease-in-out infinite;
+        }
+        .splash-dot:nth-child(1) { animation-delay: 0s;     background: oklch(0.72 0.18 155); }
+        .splash-dot:nth-child(2) { animation-delay: 0.2s;   background: oklch(0.68 0.20 245); }
+        .splash-dot:nth-child(3) { animation-delay: 0.4s;   background: oklch(0.72 0.18 35);  }
+      `}</style>
+
+      {/* Ambient orbs */}
+      <div className="splash-ambient-1" />
+      <div className="splash-ambient-2" />
+      <div className="splash-ambient-3" />
+
+      {/* Content */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "20px", position: "relative", zIndex: 1 }}>
+        {/* Logo + glow */}
+        <div className="splash-logo-wrap">
+          <div className="splash-glow" />
+          <img
+            src="/favicons/android-chrome-192x192.png"
+            alt="Splitit"
+            className="splash-logo"
+          />
+        </div>
+
+        {/* Text */}
+        <div style={{ textAlign: "center" }}>
+          <div className="splash-title">Splitit</div>
+          <div className="splash-sub">Split smarter, settle faster</div>
+        </div>
+
+        {/* Loading dots */}
+        <div className="splash-dots">
+          <div className="splash-dot" />
+          <div className="splash-dot" />
+          <div className="splash-dot" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AuthGuard() {
   const { isAuthenticated, isLoading, user, initialize } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const initCalledRef = useRef(false);
 
+  // Call initialize exactly once — never re-run on re-renders
   useEffect(() => {
-    initialize();
+    if (!initCalledRef.current) {
+      initCalledRef.current = true;
+      initialize();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -40,95 +206,22 @@ function AuthGuard() {
       navigate({ to: hasAnyGroup ? "/" : "/onboarding" });
       return;
     }
-    // Only redirect to onboarding if user has no groups at all
     const hasAnyGroup = !!(user?.groupId || (user?.groupIds && user.groupIds.length > 0));
-    if (isAuthenticated && !hasAnyGroup && !isPublic && !NO_GROUP_ROUTES.some((r) => pathname.startsWith(r))) {
+    if (
+      isAuthenticated &&
+      !hasAnyGroup &&
+      !isPublic &&
+      !NO_GROUP_ROUTES.some((r) => pathname.startsWith(r))
+    ) {
       navigate({ to: "/onboarding" });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, isLoading, user?.groupId, pathname]);
 
-  // Only show the splash/loading screen if we have NO cached user at all.
-  // If we have a persisted user, isAuthenticated is already true and we render
-  // the app immediately — the background /me refresh is silent.
+  // Show premium splash only while we're waiting on auth and have no cached user.
+  // Returning users (cached user + token) skip this entirely — they go straight to dashboard.
   if (isLoading && !isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-[#0f1923] flex items-center justify-center overflow-hidden">
-        <style>{`
-          @keyframes splashLogoIn {
-            0%   { opacity: 0; transform: scale(0.6) translateY(20px); }
-            60%  { opacity: 1; transform: scale(1.08) translateY(-4px); }
-            100% { opacity: 1; transform: scale(1) translateY(0); }
-          }
-          @keyframes splashTextIn {
-            from { opacity: 0; transform: translateY(14px); }
-            to   { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes glowPulse {
-            0%, 100% { opacity: 0.5; transform: scale(1.1); }
-            50%       { opacity: 0.85; transform: scale(1.28); }
-          }
-          @keyframes dotBounce {
-            0%, 80%, 100% { transform: scale(0.7); opacity: 0.35; }
-            40%            { transform: scale(1.15); opacity: 1; }
-          }
-          .splash-logo  { animation: splashLogoIn 0.7s cubic-bezier(0.16,1,0.3,1) both; }
-          .splash-text  { animation: splashTextIn 0.55s 0.35s cubic-bezier(0.16,1,0.3,1) both; opacity: 0; }
-          .splash-sub   { animation: splashTextIn 0.55s 0.48s cubic-bezier(0.16,1,0.3,1) both; opacity: 0; }
-          .splash-glow  { animation: glowPulse 2.2s 0.2s ease-in-out infinite; }
-          .splash-dot   { animation: dotBounce 1.2s ease-in-out infinite; }
-          .splash-dot:nth-child(2) { animation-delay: 0.18s; }
-          .splash-dot:nth-child(3) { animation-delay: 0.36s; }
-        `}</style>
-
-        <div className="flex flex-col items-center gap-5">
-          {/* Logo + glow */}
-          <div className="relative">
-            <div
-              className="absolute inset-0 rounded-[32px] splash-glow"
-              style={{
-                background: "radial-gradient(circle, oklch(0.72 0.18 155 / 0.7) 0%, oklch(0.68 0.20 245 / 0.4) 60%, transparent 100%)",
-                filter: "blur(22px)",
-              }}
-            />
-            <img
-              src="/favicons/android-chrome-192x192.png"
-              alt="Splitit"
-              className="splash-logo relative size-24 rounded-[28px] shadow-[0_16px_48px_rgba(0,0,0,0.45)]"
-              style={{ zIndex: 1 }}
-            />
-          </div>
-
-          {/* App name */}
-          <div className="text-center">
-            <div className="splash-text text-3xl font-extrabold tracking-tight text-white">
-              Splitit
-            </div>
-            <div className="splash-sub text-sm text-white/55 mt-1 font-medium">
-              Split smarter, settle faster
-            </div>
-          </div>
-
-          {/* Animated dots */}
-          <div className="flex items-center gap-2 mt-1">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className={`splash-dot size-2 rounded-full`}
-                style={{
-                  background: i === 0
-                    ? "oklch(0.72 0.18 155)"
-                    : i === 1
-                    ? "oklch(0.68 0.20 245)"
-                    : "oklch(0.72 0.18 35)",
-                  animationDelay: `${i * 0.18}s`,
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+    return <SplashScreen />;
   }
 
   return <Outlet />;
@@ -141,7 +234,10 @@ function NotFoundComponent() {
         <h1 className="text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
         <div className="mt-6">
-          <Link to="/" className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+          <Link
+            to="/"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          >
             Go home
           </Link>
         </div>
@@ -158,10 +254,19 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <h1 className="text-xl font-semibold text-foreground">Something went wrong</h1>
         <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
         <div className="mt-6 flex gap-2 justify-center">
-          <button onClick={() => { router.invalidate(); reset(); }} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+          <button
+            onClick={() => {
+              router.invalidate();
+              reset();
+            }}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          >
             Try again
           </button>
-          <a href="/" className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground">
+          <a
+            href="/"
+            className="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground"
+          >
             Go home
           </a>
         </div>
@@ -175,6 +280,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "theme-color", content: "#0f1923" },
       { title: "Splitit" },
     ],
     links: [
@@ -195,8 +301,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <head><HeadContent /></head>
-      <body>{children}<Scripts /></body>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
     </html>
   );
 }
