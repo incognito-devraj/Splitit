@@ -10,7 +10,7 @@ import { ThemeToggle } from "@/lib/theme";
 import { Clock, Users, UserCheck, Search, Loader2, CheckCircle, XCircle } from "lucide-react";
 
 export const Route = createFileRoute("/onboarding")({
-  head: () => ({ meta: [{ title: "Splitit - Setup" }] }),
+  head: () => ({ meta: [{ title: "Splitit - Set up a group" }] }),
   component: OnboardingPage,
 });
 
@@ -28,8 +28,11 @@ function OnboardingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const { setUser } = useAuth();
+  const { setUser, user } = useAuth();
   const qc = useQueryClient();
+
+  // If user already has groups, show a "Continue to Splitit" escape hatch
+  const alreadyHasGroups = !!(user?.groupId || (user?.groupIds && user.groupIds.length > 0));
 
   const handleCreate = async () => {
     if (!groupName.trim()) return;
@@ -93,10 +96,31 @@ function OnboardingPage() {
       </div>
       <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🏠</div>
-          <h1 className="text-2xl font-bold tracking-tight">Set up your PG</h1>
+          <div className="text-5xl mb-3">👥</div>
+          <h1 className="text-2xl font-bold tracking-tight">Set up a group</h1>
           <p className="text-muted-foreground text-sm mt-1">Create a new group or request to join one</p>
         </div>
+
+        {/* Escape hatch — full-width prominent button for returning users */}
+        {alreadyHasGroups && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-5 rounded-2xl bg-primary/10 border border-primary/25 p-4 flex flex-col gap-3"
+          >
+            <div className="text-sm text-foreground text-center">
+              <span className="font-semibold">You already have groups.</span>
+              <span className="text-muted-foreground ml-1">No need to set up again.</span>
+            </div>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => navigate({ to: "/" })}
+              className="w-full h-12 rounded-2xl gradient-primary text-primary-foreground font-semibold text-base flex items-center justify-center gap-2 shadow-[var(--shadow-glow)]"
+            >
+              Continue to Splitit →
+            </motion.button>
+          </motion.div>
+        )}
 
         {/* Tab switcher */}
         <div className="flex rounded-2xl bg-card border border-border p-1 mb-6">
@@ -114,10 +138,10 @@ function OnboardingPage() {
           {tab === "create" ? (
             <motion.div key="create" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1.5 block">PG Group Name</label>
+                <label className="text-sm font-medium text-muted-foreground mb-1.5 block">Group Name</label>
                 <input type="text" value={groupName} onChange={(e) => setGroupName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-                  placeholder="e.g. Sunrise PG, Boys Hostel" maxLength={80}
+                  placeholder="e.g. Trip to Goa, Flat 4B, Office Lunch" maxLength={80}
                   className="w-full h-12 px-4 rounded-2xl bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors" />
               </div>
               <motion.button whileTap={{ scale: 0.97 }} disabled={!groupName.trim() || loading} onClick={handleCreate}
@@ -159,7 +183,7 @@ function OnboardingPage() {
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1.5 block">Message to admin <span className="text-xs">(optional)</span></label>
                 <input type="text" value={message} onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Hi, I'm the new flatmate…" maxLength={200}
+                  placeholder="Hi, I'm joining for the trip…" maxLength={200}
                   className="w-full h-10 px-4 rounded-xl bg-card border border-border text-sm focus:outline-none focus:border-primary" />
               </div>
 

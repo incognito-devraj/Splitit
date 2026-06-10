@@ -62,7 +62,7 @@ export function AddExpenseSheet() {
 
   const createMutation = useMutation({
     mutationFn: (body: {
-      category: string; amount: number; sharedWith: string[];
+      category: string; amount: number; paidBy: string; sharedWith: string[];
       guestNames: string[]; title: string; notes: string;
     }) => expenseApi.create(body),
     onSuccess: () => {
@@ -102,7 +102,9 @@ export function AddExpenseSheet() {
     if (!category || !amountNum || totalParticipants === 0 || !title.trim()) return;
     try {
       await createMutation.mutateAsync({
-        category, amount: amountNum, sharedWith: selected,
+        category, amount: amountNum,
+        paidBy: paidById || user?._id || "",
+        sharedWith: selected,
         guestNames: validGuests, title: title.trim(), notes: title.trim(),
       });
       setStep(4);

@@ -61,13 +61,22 @@ export async function createExpense(
     title: string;
     category: ExpenseCategory;
     amount: number;
+    paidBy?: string;       // optional — if omitted, defaults to the logged-in user
     sharedWith: string[];
-    guestNames?: string[]; // new: guest participant names
+    guestNames?: string[];
     notes: string;
   },
 ) {
+  // Determine who actually paid — defaults to the logged-in user if not specified
+  const payerId = body.paidBy ?? userId;
+
+  // Validate paidBy is a real member of this group
+  if (payerId !== userId) {
+    await validateMembers(groupId, [payerId]);
+  }
+
   const sharedSet = new Set(body.sharedWith);
-  sharedSet.add(userId); // payer always participates
+  sharedSet.add(payerId); // payer always participates in the split
 
   const [sharedWithIds, guestIds] = await Promise.all([
     validateMembers(groupId, [...sharedSet]),
@@ -81,7 +90,7 @@ export async function createExpense(
     title:             body.title,
     category:          body.category,
     amount:            body.amount,
-    paidBy:            new Types.ObjectId(userId),
+    paidBy:            new Types.ObjectId(payerId),
     sharedWith:        sharedWithIds,
     guestParticipants: guestIds,
     splitAmount,
@@ -99,7 +108,7 @@ export async function createExpense(
     newData:   expense.toObject(),
   });
 
-  logger.info(`Expense created ₹${body.amount} [${body.category}] group=${groupId} guests=${guestIds.length}`);
+  logger.info(`Expense created ₹${body.amount} [${body.category}] paidBy=${payerId} group=${groupId} guests=${guestIds.length}`);
   const created = await populateExpense(expense._id.toString());
   return created ? normaliseExpense(created) : created;
 }

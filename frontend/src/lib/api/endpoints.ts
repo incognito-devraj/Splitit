@@ -180,6 +180,7 @@ export const expenseApi = {
     title: string;
     category: string;
     amount: number;
+    paidBy?: string;
     sharedWith: string[];
     guestNames?: string[];
     notes: string;

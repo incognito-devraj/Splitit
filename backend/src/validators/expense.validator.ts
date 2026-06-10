@@ -9,6 +9,7 @@ export const createExpenseSchema = z.object({
     title:      z.string().trim().min(1, 'Description is required').max(200),
     category:   z.enum(categoryEnum, { errorMap: () => ({ message: 'Invalid category' }) }),
     amount:     z.number({ invalid_type_error: 'Amount must be a number' }).positive().max(1_000_000),
+    paidBy:     objectId.optional(), // optional — defaults to the logged-in user
     sharedWith: z.array(objectId).min(0).max(50).default([]),
     guestNames: z
       .array(z.string().trim().min(1).max(100))

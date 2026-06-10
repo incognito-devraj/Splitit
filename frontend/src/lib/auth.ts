@@ -70,8 +70,27 @@ export const useAuth = create<AuthState>()(
           const { data } = await Promise.race([authApi.me(), timeoutPromise]);
           const freshUser = data.data;
           const storedRefresh = localStorage.getItem("refreshToken");
+
+          // Preserve groupIds from cached user if the fresh response omits them.
+          // This prevents a race where /me returns before groups are fully loaded,
+          // causing hasAnyGroup to flip false and triggering an onboarding redirect.
+          const cachedUser = get().user;
+          const mergedGroupIds =
+            (freshUser.groupIds && freshUser.groupIds.length > 0)
+              ? freshUser.groupIds
+              : (cachedUser?.groupIds && cachedUser.groupIds.length > 0)
+                ? cachedUser.groupIds
+                : freshUser.groupIds;
+
+          const mergedUser: typeof freshUser = {
+            ...freshUser,
+            groupIds: mergedGroupIds,
+            // Prefer fresh groupId but fall back to cached if fresh is null
+            groupId: freshUser.groupId ?? cachedUser?.groupId ?? null,
+          };
+
           set({
-            user: freshUser,
+            user: mergedUser,
             accessToken: token,
             refreshToken: storedRefresh,
             isAuthenticated: true,

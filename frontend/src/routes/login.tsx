@@ -142,13 +142,15 @@ function LoginPage() {
   const [showSplash, setShowSplash] = useState(!isAuthenticated);
   const [contentVisible, setContentVisible] = useState(false);
 
-  // Redirect immediately if authenticated
+  // Redirect immediately if authenticated — read fresh state from store, not closure
   useEffect(() => {
     if (isAuthenticated) {
-      const hasAnyGroup = !!(user?.groupId || (user?.groupIds && user.groupIds.length > 0));
+      // Read the latest user directly from the store to avoid stale closure
+      const freshUser = useAuth.getState().user;
+      const hasAnyGroup = !!(freshUser?.groupId || (freshUser?.groupIds && freshUser.groupIds.length > 0));
       navigate({ to: hasAnyGroup ? "/" : "/onboarding" });
     }
-  }, [isAuthenticated, user, navigate]);
+  }, [isAuthenticated, navigate]);
 
   // Reveal content after splash exits
   useEffect(() => {
@@ -168,7 +170,9 @@ function LoginPage() {
     setError("");
     try {
       await loginWithGoogle(credentialResponse.credential);
-      const hasAnyGroup = !!(user?.groupId || (user?.groupIds && user.groupIds.length > 0));
+      // Read fresh state directly from store — the closure `user` is stale at this point
+      const freshUser = useAuth.getState().user;
+      const hasAnyGroup = !!(freshUser?.groupId || (freshUser?.groupIds && freshUser.groupIds.length > 0));
       navigate({ to: hasAnyGroup ? "/" : "/onboarding" });
     } catch (e: unknown) {
       console.error("Login error:", e);
@@ -236,7 +240,7 @@ function LoginPage() {
               transition={{ duration: 0.5, delay: 0.25 }}
               className="text-white/80 text-lg leading-relaxed mb-9"
             >
-              Split expenses with friends, roommates & PG mates.
+              Split expenses with friends, family & travel buddies.
             </motion.p>
 
             {/* Feature list */}
@@ -296,7 +300,7 @@ function LoginPage() {
                 transition={{ duration: 0.42, delay: 0.2 }}
                 className="text-muted-foreground mt-1.5 text-sm leading-snug"
               >
-                Split expenses with friends,<br />roommates &amp; PG mates.
+                Split expenses with anyone,<br />anytime, anywhere.
               </motion.p>
             </div>
 
@@ -308,7 +312,7 @@ function LoginPage() {
               className="hidden lg:block mb-7"
             >
               <h2 className="text-3xl font-bold tracking-tight">Welcome back</h2>
-              <p className="text-muted-foreground mt-1.5">Sign in to continue to your group</p>
+              <p className="text-muted-foreground mt-1.5">Sign in to continue</p>
             </motion.div>
 
             {/* Mobile feature cards */}

@@ -15,7 +15,12 @@ import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/lib/theme";
 
 const PUBLIC_ROUTES = ["/login", "/onboarding"];
-const NO_GROUP_ROUTES = ["/onboarding", "/groups"];
+const NO_GROUP_ROUTES = ["/onboarding", "/groups", "/discover"];
+
+function hasGroups(user: { groupId?: string | null; groupIds?: string[] } | null): boolean {
+  if (!user) return false;
+  return !!(user.groupId || (user.groupIds && user.groupIds.length > 0));
+}
 
 // ── Animated splash shown only while auth is resolving (no cached user) ──────
 function SplashScreen() {
@@ -197,30 +202,44 @@ function AuthGuard() {
     if (isLoading) return;
     const isPublic = PUBLIC_ROUTES.some((r) => pathname.startsWith(r));
 
+    // Not logged in → send to login (except public pages)
     if (!isAuthenticated && !isPublic) {
       navigate({ to: "/login" });
       return;
     }
+
+    // Logged in and on login page → go to dashboard or onboarding
     if (isAuthenticated && pathname === "/login") {
-      const hasAnyGroup = !!(user?.groupId || (user?.groupIds && user.groupIds.length > 0));
-      navigate({ to: hasAnyGroup ? "/" : "/onboarding" });
+      // Read fresh user directly from store to avoid stale closure
+      const freshUser = useAuth.getState().user;
+      navigate({ to: hasGroups(freshUser) ? "/" : "/onboarding" });
       return;
     }
-    const hasAnyGroup = !!(user?.groupId || (user?.groupIds && user.groupIds.length > 0));
+
+    // Logged in, no groups, not on a safe page → onboarding
+    // IMPORTANT: only redirect to onboarding if user truly has NO groups.
+    // Do NOT redirect if there's any chance groups haven't loaded yet —
+    // wait until isLoading is fully false AND we have a definitive answer.
     if (
       isAuthenticated &&
-      !hasAnyGroup &&
+      !hasGroups(user) &&
       !isPublic &&
       !NO_GROUP_ROUTES.some((r) => pathname.startsWith(r))
     ) {
       navigate({ to: "/onboarding" });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, isLoading, user?.groupId, pathname]);
+  }, [isAuthenticated, isLoading, user?.groupId, user?.groupIds?.length, pathname]);
 
   // Show premium splash only while we're waiting on auth and have no cached user.
   // Returning users (cached user + token) skip this entirely — they go straight to dashboard.
   if (isLoading && !isAuthenticated) {
+    return <SplashScreen />;
+  }
+
+  // Authenticated user landed on login page — show splash while navigation fires
+  // to prevent the login page from flashing before the redirect completes.
+  if (isAuthenticated && pathname === "/login") {
     return <SplashScreen />;
   }
 
