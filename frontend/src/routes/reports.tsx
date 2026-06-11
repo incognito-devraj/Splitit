@@ -90,7 +90,6 @@ function Reports() {
     queryKey: QK.balances(activeGroupId),
     queryFn: () => balanceApi.all().then((r) => r.data.data),
     enabled: !!activeGroupId,
-    refetchInterval: 15_000,
   });
 
   const removeMutation = useMutation({

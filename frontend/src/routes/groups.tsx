@@ -658,7 +658,6 @@ function RequestsTab() {
     queryKey: ["join-requests-pending"],
     queryFn: () => joinRequestApi.pending().then((r) => r.data.data),
     enabled: !!user?.groupId,
-    refetchInterval: 20_000,
   });
 
   const approveMutation = useMutation({

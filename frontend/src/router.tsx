@@ -6,19 +6,20 @@ export const getRouter = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
-        // 30 seconds stale time — prevents request storms on mount/focus
-        staleTime: 30_000,
-        gcTime: 5 * 60 * 1000,
+        // 2 minutes stale time — data doesn't change that often,
+        // prevents redundant fetches on every mount/navigation
+        staleTime: 2 * 60_000,
+        // Keep unused data in cache for 10 minutes so switching tabs is instant
+        gcTime: 10 * 60_000,
         // Do NOT retry on 4xx errors — only retry on network failures
         retry: (failureCount, error) => {
           const status = (error as { response?: { status?: number } })?.response?.status;
-          // Never retry client errors (4xx) — they won't succeed on retry
           if (status && status >= 400 && status < 500) return false;
-          // Retry network errors up to 2 times
           return failureCount < 2;
         },
-        refetchOnWindowFocus: false, // prevents request storm on tab switch
-        refetchOnMount: true,
+        refetchOnWindowFocus: false,
+        // Do NOT refetch on every mount — serve from cache until stale
+        refetchOnMount: false,
       },
     },
   });

@@ -35,12 +35,11 @@ function Dashboard() {
     queryKey: QK.balances(activeGroupId),
     queryFn: () => balanceApi.all().then((r) => r.data.data),
     enabled: !!activeGroupId,
-    refetchInterval: 30_000,
   });
 
   const { data: expensesData, isLoading: expLoading } = useQuery({
     queryKey: QK.expenses(activeGroupId),
-    queryFn: () => expenseApi.list({ limit: 100 }).then((r) => r.data.data),
+    queryFn: () => expenseApi.list({ limit: 200 }).then((r) => r.data.data),
     enabled: !!activeGroupId,
   });
 

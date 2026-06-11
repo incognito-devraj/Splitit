@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth";
+import { QK } from "@/lib/queryKeys";
 import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/lib/theme";
 
@@ -183,7 +184,7 @@ function SplashScreen() {
   );
 }
 
-function AuthGuard() {
+function AuthGuard({ queryClient }: { queryClient: QueryClient }) {
   const { isAuthenticated, isLoading, user, initialize } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -216,10 +217,20 @@ function AuthGuard() {
       return;
     }
 
+    // Prefetch critical data as soon as auth resolves and user has a group
+    // This warms the cache so pages feel instant
+    if (isAuthenticated && user?.groupId && queryClient) {
+      const gid = user.groupId;
+      const prefetch = (key: unknown[], fn: () => Promise<unknown>) =>
+        queryClient.prefetchQuery({ queryKey: key, queryFn: fn, staleTime: 2 * 60_000 });
+
+      prefetch(QK.group(gid),           () => import("@/lib/api/endpoints").then(({ groupApi }) => groupApi.current().then(r => r.data.data)));
+      prefetch(QK.balances(gid),        () => import("@/lib/api/endpoints").then(({ balanceApi }) => balanceApi.all().then(r => r.data.data)));
+      prefetch(QK.expenses(gid),        () => import("@/lib/api/endpoints").then(({ expenseApi }) => expenseApi.list({ limit: 200 }).then(r => r.data.data)));
+      prefetch(QK.summaryCategory(gid), () => import("@/lib/api/endpoints").then(({ summaryApi }) => summaryApi.category().then(r => r.data.data)));
+    }
+
     // Logged in, no groups, not on a safe page → onboarding
-    // IMPORTANT: only redirect to onboarding if user truly has NO groups.
-    // Do NOT redirect if there's any chance groups haven't loaded yet —
-    // wait until isLoading is fully false AND we have a definitive answer.
     if (
       isAuthenticated &&
       !hasGroups(user) &&
@@ -336,7 +347,7 @@ function RootComponent() {
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <AuthGuard />
+        <AuthGuard queryClient={queryClient} />
       </QueryClientProvider>
     </ThemeProvider>
   );

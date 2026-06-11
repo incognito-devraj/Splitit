@@ -158,10 +158,14 @@ export function AppShell({ children }: { children: ReactNode }) {
 // Desktop utility area; keeps the top-right controls together.
 function DesktopTopBar() {
   const { user } = useAuth();
+  // This query is already fetched by the dashboard — we just subscribe to the cache here.
+  // With refetchOnMount: false globally, this won't fire a new request if cache is warm.
   useQuery({
     queryKey: QK.group(user?.groupId ?? null),
     queryFn: () => groupApi.current().then((response) => response.data.data),
     enabled: !!user?.groupId,
+    // Extra guard: never refetch from here — just read cache
+    staleTime: Infinity,
   });
 
   return (
