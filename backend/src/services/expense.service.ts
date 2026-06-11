@@ -75,11 +75,19 @@ export async function createExpense(
     await validateMembers(groupId, [payerId]);
   }
 
-  const sharedSet = new Set(body.sharedWith);
-  sharedSet.add(payerId); // payer always participates in the split
+  // sharedWith is exactly what the user selected — do NOT auto-add the payer.
+  // The payer is credited the full amount in the balance engine regardless of
+  // whether they appear in sharedWith. Auto-adding them caused incorrect splits:
+  // e.g. A pays ₹55 for B only → should be B owes 55, but was split 27.5 each.
+  // If the payer wants to share the cost too, they must select themselves explicitly.
+  const sharedIds = [...new Set(body.sharedWith)];
+
+  if (sharedIds.length === 0 && (body.guestNames ?? []).length === 0) {
+    throw new AppError('Expense must have at least 1 participant (member or guest)', 400);
+  }
 
   const [sharedWithIds, guestIds] = await Promise.all([
-    validateMembers(groupId, [...sharedSet]),
+    validateMembers(groupId, sharedIds),
     resolveGuests(groupId, userId, body.guestNames ?? []),
   ]);
 
@@ -198,8 +206,9 @@ export async function updateExpense(
 
     let newShared: Types.ObjectId[];
     if (updates.sharedWith) {
+      // Do NOT auto-add the payer — respect the explicit selection.
+      // Payer gets full credit in balance engine regardless of sharedWith.
       const sharedSet = new Set(updates.sharedWith);
-      sharedSet.add(expense.paidBy.toString());
       newShared = await validateMembers(groupId, [...sharedSet]);
     } else {
       newShared = expense.sharedWith as Types.ObjectId[];
