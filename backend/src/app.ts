@@ -78,6 +78,7 @@ if (env.NODE_ENV !== 'test') {
   }));
 }
 
+
 // ── Health check (no rate limit — used by uptime monitors) ───────────────────
 app.get('/health', (_req, res) => {
   res.json({ success: true, data: { status: 'ok', env: env.NODE_ENV, ts: new Date().toISOString() } });
@@ -107,6 +108,18 @@ app.use('/api/balances',                          balanceRoutes);
 app.use('/api/settlements',                       settlementRoutes);
 app.use('/api/summary',                           summaryRoutes);
 app.use('/api/join-requests', joinRequestLimiter, joinRequestRoutes);
+
+
+// Health Check Route
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Backend is awake",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {
