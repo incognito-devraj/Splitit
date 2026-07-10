@@ -55,6 +55,7 @@ export interface ApiBalance {
   totalPaid: number;
   totalOwed: number;
   netBalance: number;
+  isGuest?: boolean;
 }
 
 export interface ApiSettlement {

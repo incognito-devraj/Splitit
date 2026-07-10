@@ -38,11 +38,13 @@ function Members() {
 
   const isAdmin = user?.role === "admin";
 
-  const { data: balances = [], isLoading } = useQuery({
+  const { data: allBalances = [], isLoading } = useQuery({
     queryKey: QK.balances(activeGroupId),
     queryFn: () => balanceApi.all().then((r) => r.data.data),
     enabled: !!activeGroupId,
   });
+  // Members page only shows registered members — guests are shown in Reports
+  const balances = allBalances.filter((b) => !b.isGuest);
 
   const { data: group } = useQuery({
     queryKey: QK.group(activeGroupId),

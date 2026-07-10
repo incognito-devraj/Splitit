@@ -31,11 +31,13 @@ function Dashboard() {
     enabled: !!activeGroupId,
   });
 
-  const { data: balances = [], isLoading: balLoading } = useQuery({
+  const { data: allBalances = [], isLoading: balLoading } = useQuery({
     queryKey: QK.balances(activeGroupId),
     queryFn: () => balanceApi.all().then((r) => r.data.data),
     enabled: !!activeGroupId,
   });
+  // Home page only uses registered member balances
+  const balances = allBalances.filter((b) => !b.isGuest);
 
   const { data: expensesData, isLoading: expLoading } = useQuery({
     queryKey: QK.expenses(activeGroupId),

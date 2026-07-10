@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Share2, X, TrendingUp, Users, Receipt, Wallet, Copy, Check, UserMinus, Trash2, Calendar, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Share2, X, TrendingUp, Users, Receipt, Wallet, Copy, Check, Trash2, Calendar, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { CATEGORIES } from "@/lib/store";
 import { expenseApi, summaryApi, balanceApi, groupApi } from "@/lib/api/endpoints";
@@ -32,7 +32,6 @@ function avatarProps(id: string) {
 function Reports() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [removingId, setRemovingId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   // ── Admin report/clear state ──────────────────────────────────────────────
@@ -90,16 +89,6 @@ function Reports() {
     queryKey: QK.balances(activeGroupId),
     queryFn: () => balanceApi.all().then((r) => r.data.data),
     enabled: !!activeGroupId,
-  });
-
-  const removeMutation = useMutation({
-    mutationFn: (id: string) => groupApi.removeMember(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["group"] });
-      qc.invalidateQueries({ queryKey: ["members"] });
-      qc.invalidateQueries({ queryKey: ["balances"] });
-      setRemovingId(null);
-    },
   });
 
   // ── Admin: generate report ────────────────────────────────────────────────
@@ -227,6 +216,12 @@ function Reports() {
   const allExpenses = Array.isArray(expensesRaw) ? expensesRaw : [];
   const isLoading = sumLoading || catLoading || expLoading || balLoading;
 
+  // Split the backend-provided balances into members and guests.
+  // Both sets are computed with the same paise arithmetic on the backend,
+  // guaranteeing sum(memberNets) + sum(guestNets) === 0 exactly.
+  const memberBalances = balances.filter((b) => !b.isGuest);
+  const guestBalances  = balances.filter((b) => b.isGuest);
+
   // Monthly trend — last 6 months in chronological order (oldest → newest)
   const monthlyMap = new Map<string, { amount: number; label: string }>();
   for (const e of allExpenses) {
@@ -247,7 +242,7 @@ function Reports() {
   const kpis = [
     { label: "Total Spent",  value: `₹${(summary?.totalAmount ?? 0).toLocaleString("en-IN")}`, icon: Wallet,    tint: "oklch(0.72 0.18 155)" },
     { label: "Expenses",     value: summary?.totalExpenses ?? 0,                                icon: Receipt,   tint: "oklch(0.68 0.20 245)" },
-    { label: "Members",      value: summary?.balances?.length ?? 0,                             icon: Users,     tint: "oklch(0.65 0.25 295)" },
+    { label: "Members",      value: balances.length,                                            icon: Users,     tint: "oklch(0.65 0.25 295)" },
     { label: "Categories",   value: catData.length,                                             icon: TrendingUp, tint: "oklch(0.78 0.16 75)" },
   ];
 
@@ -362,7 +357,7 @@ function Reports() {
         )}
 
         <div className="space-y-2">
-          {balances.map((b, i) => {
+          {memberBalances.map((b, i) => {
             const isMe = b.userId === user?._id;
             const positive = b.netBalance >= 0;
             const settled = Math.abs(b.netBalance) < 0.5;
@@ -388,47 +383,53 @@ function Reports() {
                     <div className={`text-base font-semibold tabular ${settled ? "text-muted-foreground" : positive ? "text-foreground" : "text-[#ffb1b1]"}`}>
                       {settled ? "₹0" : `${positive ? "+" : "−"}₹${Math.abs(b.netBalance).toFixed(0)}`}
                     </div>
-                    {isAdmin && !isMe && (
-                      <button onClick={() => setRemovingId(b.userId)}
-                        className="mt-0.5 text-[9px] text-muted-foreground hover:text-red-400 flex items-center gap-0.5 ml-auto">
-                        <UserMinus className="size-3" /> Remove
-                      </button>
-                    )}
                   </div>
                 </div>
               </motion.div>
             );
           })}
+
+          {/* Guest rows — computed by the backend with the same paise arithmetic,
+              so sum(all member nets) + sum(all guest nets) === 0 exactly */}
+          {!balLoading && guestBalances.length > 0 && (
+            <>
+              <div className="flex items-center gap-2 pt-1">
+                <div className="flex-1 h-px bg-border/60" />
+                <span className="text-[10px] text-muted-foreground px-1 shrink-0">Guests</span>
+                <div className="flex-1 h-px bg-border/60" />
+              </div>
+              {guestBalances.map((g, i) => {
+                const settled = Math.abs(g.netBalance) < 0.5;
+                return (
+                  <motion.div key={g.userId}
+                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: (memberBalances.length + i) * 0.04 }}
+                    className="rounded-2xl bg-background border border-dashed border-amber-500/30 overflow-hidden">
+                    <div className="p-3 flex items-center gap-3">
+                      <div className="size-10 rounded-full grid place-items-center text-sm font-bold shrink-0 text-amber-600"
+                        style={{ background: "color-mix(in oklab, oklch(0.72 0.18 75) 22%, transparent)" }}>
+                        {g.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm flex items-center gap-1.5">
+                          <span className="truncate">{g.name}</span>
+                          <span className="text-[9px] bg-amber-500/15 text-amber-500 px-1.5 py-0.5 rounded-full shrink-0">guest</span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">No account · owes the payer</div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className={`text-base font-semibold tabular ${settled ? "text-muted-foreground" : "text-[#ffb1b1]"}`}>
+                          {settled ? "₹0" : `−₹${Math.abs(g.netBalance).toFixed(0)}`}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </>
+          )}
         </div>
       </motion.div>
-
-      {/* Remove member confirmation */}
-      <AnimatePresence>
-        {removingId && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[70] bg-black/50 flex items-end sm:items-center justify-center p-4"
-            onClick={() => setRemovingId(null)}
-          >
-            <motion.div
-              initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}
-              transition={{ type: "spring", damping: 26, stiffness: 300 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm bg-card rounded-3xl p-6 border border-border"
-            >
-              <h3 className="font-semibold text-lg">Remove member?</h3>
-              <p className="text-sm text-muted-foreground mt-1">Their expenses will remain in history.</p>
-              <div className="flex gap-3 mt-5">
-                <button onClick={() => setRemovingId(null)} className="flex-1 h-11 rounded-2xl bg-muted text-sm font-semibold">Cancel</button>
-                <button onClick={() => removeMutation.mutate(removingId)} disabled={removeMutation.isPending}
-                  className="flex-1 h-11 rounded-2xl bg-red-500/20 text-red-400 text-sm font-semibold disabled:opacity-50">
-                  {removeMutation.isPending ? "Removing…" : "Remove"}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Monthly Trend — Area Chart */}
       <motion.div

@@ -10,10 +10,12 @@ export async function getSummary(groupId: string) {
   const group = await Group.findById(groupId).lean();
   if (!group) throw new AppError('Group not found', 404);
 
-  const [expenses, balances] = await Promise.all([
+  const [expenses, allBalances] = await Promise.all([
     Expense.find({ groupId: new Types.ObjectId(groupId), isDeleted: { $ne: true } }).lean(),
     computeGroupBalances(groupId),
   ]);
+
+  const balances = allBalances.filter((b) => !b.isGuest);
 
   const totalAmount = expenses.reduce((s, e) => s + e.amount, 0);
 
